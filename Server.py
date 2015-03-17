@@ -199,7 +199,7 @@ def keepRunning(minLog, testMode, ser):
 			if keyPressed in (b'f', b'F'):
 				print("Forcing attempt...")
 				forceAttempt = "Y"
-		if time.time() > (lastAttempt + 60*attemptWaitTime) or forceAttempt = "Y":
+		if time.time() > (lastAttempt + 60*attemptWaitTime) or forceAttempt == "Y":
 			lastAttempt = time.time()
 			forceAttempt = "N"
 			try: exitServer = chkArduino(minLog, testMode, ser)
