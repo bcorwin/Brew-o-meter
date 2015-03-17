@@ -186,6 +186,7 @@ def vars2pass(sensorVarsOnly):
 	
 def keepRunning(minLog, testMode, ser):
 	exitServer = "N"
+	forceAttempt = "N"
 	attemptWaitTime = 5
 	lastAttempt = time.time() - 60*attemptWaitTime - 1
 	while exitServer == "N":
@@ -195,8 +196,12 @@ def keepRunning(minLog, testMode, ser):
 			if keyPressed == b'\x1b':
 				print("Cancelled.")
 				exitServer = "Y"
-		if time.time() > (lastAttempt + 60*attemptWaitTime):
+			if keyPressed in (b'f', b'F'):
+				print("Forcing attempt...")
+				forceAttempt = "Y"
+		if time.time() > (lastAttempt + 60*attemptWaitTime) or forceAttempt = "Y":
 			lastAttempt = time.time()
+			forceAttempt = "N"
 			try: exitServer = chkArduino(minLog, testMode, ser)
 			except:
 				print(str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + " " + logEvent("chkArduino failed for unknown reason"))
