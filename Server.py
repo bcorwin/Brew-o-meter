@@ -187,7 +187,7 @@ def vars2pass(sensorVarsOnly):
 def keepRunning(minLog, testMode, ser):
 	exitServer = "N"
 	attemptWaitTime = 5
-	lastAttempt = time.time()
+	lastAttempt = time.time() - 60*attemptWaitTime - 1
 	while exitServer == "N":
 		keyChk = msvcrt.kbhit()
 		if keyChk == 1:
