@@ -6,7 +6,7 @@ def send2middleware(message):
 	server_address = (server_ip, 6005)
 	
 	#COMMENT THIS TO RUN OVER INTERNET
-	server_address = ('localhost', 6005)
+	#server_address = ('localhost', 6005)
 	
 	try: sock.connect(server_address)
 	except: return(("Timeout", None))
