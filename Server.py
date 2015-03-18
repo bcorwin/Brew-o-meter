@@ -181,10 +181,8 @@ def readArduino(ser):
 
 def readJSON(var, str):
 	pattern = "'" + var + "':([^,]*)[,}]"
-	if re.search(pattern, str) != None:
-		out = float(re.search(pattern, str, re.IGNORECASE ).group(1))
-	else:
-		out = 0.0
+	try: out = float(re.search(pattern, str, re.IGNORECASE ).group(1))
+	except: out = 0.0
 	return(out)
 
 def logValues2django(data):	
@@ -258,9 +256,10 @@ def keepRunning(minLog, testMode, ser):
 			forceAttempt = "N"
 			print(logEvent("Attempting to restart chkArduino.") + "\n")
 			try: exitServer = chkArduino(minLog, testMode, ser)
-			finally:
+			except:
 				print(str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + " " + logEvent("chkArduino failed for unknown reason"))
 				print("Waiting to try again...\n")
+				continue
 
 #Get arguments:
 if len(sys.argv) > 1:
