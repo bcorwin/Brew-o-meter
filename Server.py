@@ -41,23 +41,25 @@ def chkArduino(minLog, testMode, ser):
 		genCompLog(queuedLogs, sensorVars)
 		queuedLogsCnt = 0		
 	
-	print("Press ESC to cancel.")
+	print("Press 'c' to cancel.")
 	while True:
 		currTime = time.time()
-		keyChk = msvcrt.kbhit()
-		if keyChk == 1:
-			keyPressed = msvcrt.getch()
-			if keyPressed == b'\x1b':
-				print(logEvent("Cancelled."))
-				return("Y")
-			elif keyPressed in [b'f', b'F']:
-				forceLog = "Y"
-				print("\n")
-				print(logEvent("Forcing log..."))
-			elif keyPressed in [b'm', b'M']:
-				minLog = int(input("Current log time is " + str(minLog) + ". Enter new value: "))
-				print(logEvent("minLog changed to " + str(minLog)))
-				print("\nReading...")
+		
+		evnt = evntListener()
+		if evnt == "C":
+			print(logEvent("Cancelled."))
+			return("Y")
+		elif evnt == "F":
+			forceLog = "Y"
+			print(logEvent("Forcing log..."))
+		elif evnt == "M":
+			newVal = input("Current log time is " + str(minLog) + ". Enter new value: ")
+			try:
+				if newVal != "":
+					minLog = int(newVal)
+					print(logEvent("minLog changed to " + str(minLog)))
+			except ValueError: print("Please enter a number")
+			print("\nReading...")
 				
 		#Reading and aggregate
 		if testMode != "Y": readValue = readArduino(ser)
@@ -97,6 +99,19 @@ def chkArduino(minLog, testMode, ser):
 			forceLog = "N" 
 			print("\nReading...")
 
+def evntListener():
+	#Return tuples key code and value if value is to be changed
+	#Input status (code location) so that can be sent back to server if asked
+	if msvcrt.kbhit() == 1:
+		try: out = msvcrt.getch().decode().upper()
+		except: out = None
+		return(out)
+	else: return(socketListener())
+	
+
+def socketListener():
+	return(None)
+	
 def postQueued(file, sensorVars):
 	out = 0
 	f = open(file)
@@ -116,7 +131,7 @@ def postQueued(file, sensorVars):
 		data["instant_override"] = int(row[columns["instant_override"]])
 		
 		response = logValues2django(data)
-		if response[0] != 200:
+		if response[0] != 200 or re.search("Success", response[1]) == None:
 			log2computer(file, response, data, sensorVars)
 			out += 1
 			print(logEvent("Failed Queued Push|" + response[1] + "|" + str(data["instant_override"])))
@@ -190,15 +205,14 @@ def keepRunning(minLog, testMode, ser):
 	attemptWaitTime = 5
 	lastAttempt = time.time() - 60*attemptWaitTime - 1
 	while exitServer == "N":
-		keyChk = msvcrt.kbhit()
-		if keyChk == 1:
-			keyPressed = msvcrt.getch()
-			if keyPressed == b'\x1b':
-				print("Cancelled.")
-				exitServer = "Y"
-			if keyPressed in (b'f', b'F'):
-				print("Forcing attempt...")
-				forceAttempt = "Y"
+		evnt = evntListener()
+		if evnt == 'C':
+			print("Cancelled.")
+			exitServer = "Y"
+		if evnt == "F":
+			print("Forcing attempt...")
+			forceAttempt = "Y"
+			
 		if time.time() > (lastAttempt + 60*attemptWaitTime) or forceAttempt == "Y":
 			lastAttempt = time.time()
 			forceAttempt = "N"
