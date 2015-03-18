@@ -60,6 +60,9 @@ def chkArduino(minLog, testMode, ser):
 					print(logEvent("minLog changed to " + str(minLog)))
 			except ValueError: print("Please enter a number")
 			print("\nReading...")
+		elif evnt == "B":
+			print("Test break.")
+			return(None)
 				
 		#Reading and aggregate
 		if testMode != "Y": readValue = readArduino(ser)
@@ -131,10 +134,12 @@ def postQueued(file, sensorVars):
 		data["instant_override"] = int(row[columns["instant_override"]])
 		
 		response = logValues2django(data)
-		if response[0] != 200 or re.search("Success", response[1]) == None:
+		if response[0] != 200:
 			log2computer(file, response, data, sensorVars)
 			out += 1
-			print(logEvent("Failed Queued Push|" + response[1] + "|" + str(data["instant_override"])))
+			print(logEvent("Failed Queued Upload|" + response[1] + "|" + str(data["instant_override"])))
+		elif re.search("Success", response[1]) == None:
+			print(logEvent("Failed Queued Post|" + response[1] + "|" + str(data["instant_override"])))
 		else:
 			print(logEvent("Successful Queued Push|" + str(data["instant_override"])))
 	return(out)
@@ -203,8 +208,11 @@ def keepRunning(minLog, testMode, ser):
 	exitServer = "N"
 	forceAttempt = "N"
 	attemptWaitTime = 5
-	lastAttempt = time.time() - 60*attemptWaitTime - 1
-	while exitServer == "N":
+	
+	exitServer = chkArduino(minLog, testMode, ser)
+	print("Waiting to try again...\n")
+	lastAttempt = time.time()
+	while exitServer != "Y":
 		evnt = evntListener()
 		if evnt == 'C':
 			print("Cancelled.")
@@ -216,7 +224,7 @@ def keepRunning(minLog, testMode, ser):
 		if time.time() > (lastAttempt + 60*attemptWaitTime) or forceAttempt == "Y":
 			lastAttempt = time.time()
 			forceAttempt = "N"
-			print(logEvent("Attempting to restart chkArduino."))
+			print(logEvent("Attempting to restart chkArduino.\n"))
 			try: exitServer = chkArduino(minLog, testMode, ser)
 			except:
 				print(str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + " " + logEvent("chkArduino failed for unknown reason"))
@@ -239,5 +247,4 @@ if testMode != "Y":
 	ser = serial.Serial(comPort, 9600)
 else: ser = None
 
-if testMode == "Y": chkArduino(minLog, testMode, ser)
-else: keepRunning(minLog, testMode, ser)
+keepRunning(minLog, testMode, ser)
