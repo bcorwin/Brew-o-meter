@@ -258,7 +258,7 @@ def keepRunning(minLog, testMode, ser):
 			forceAttempt = "N"
 			print(logEvent("Attempting to restart chkArduino.") + "\n")
 			try: exitServer = chkArduino(minLog, testMode, ser)
-			except:
+			finally:
 				print(str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + " " + logEvent("chkArduino failed for unknown reason"))
 				print("Waiting to try again...\n")
 
