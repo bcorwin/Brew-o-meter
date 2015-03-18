@@ -123,6 +123,7 @@ def socketListener(timeout):
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	server_ip = socket.gethostbyname(socket.gethostname())
 	server_address = (server_ip, 6005)
+	
 	#COMMENT THIS TO RUN OVER INTERNET
 	server_address = ('localhost', 6005)
 	
