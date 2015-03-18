@@ -7,6 +7,7 @@
 
 #Keys: temp_beer, light_amb, temp_amb, key = "beer", instant_override (time stamp)
 
+import socket
 import datetime
 import time
 import serial
@@ -45,7 +46,7 @@ def chkArduino(minLog, testMode, ser):
 	while True:
 		currTime = time.time()
 		
-		evnt = evntListener()
+		evnt,val = evntListener()
 		if evnt == "C":
 			print(logEvent("Cancelled."))
 			return("Y")
@@ -53,7 +54,8 @@ def chkArduino(minLog, testMode, ser):
 			forceLog = "Y"
 			print(logEvent("Forcing log..."))
 		elif evnt == "M":
-			newVal = input("Current log time is " + str(minLog) + ". Enter new value: ")
+			if val == None: newVal = input("Current log time is " + str(minLog) + ". Enter new value: ")
+			else: newVal = val
 			try:
 				if newVal != "":
 					minLog = int(newVal)
@@ -103,17 +105,45 @@ def chkArduino(minLog, testMode, ser):
 			print("\nReading...")
 
 def evntListener():
-	#Return tuples key code and value if value is to be changed
 	#Input status (code location) so that can be sent back to server if asked
 	if msvcrt.kbhit() == 1:
 		try: out = msvcrt.getch().decode().upper()
-		except: out = None
-		return(out)
-	else: return(socketListener())
+		except: out = (None, None)
+		return((out, None))
+	else:
+		r, val = socketListener(1)
+		if r == "Success":
+			s = val.split("=")
+			if len(s) > 1: return(s[0].upper(),s[1])
+			else: return((val.upper(),None))
+		else: return((None, None))
 	
 
-def socketListener():
-	return(None)
+def socketListener(timeout):
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	server_ip = socket.gethostbyname(socket.gethostname())
+	server_address = (server_ip, 6005)
+	#COMMENT THIS TO RUN OVER INTERNET
+	server_address = ('localhost', 6005)
+	
+	sock.bind(server_address)
+	sock.listen(1)
+	if timeout != None: sock.settimeout(timeout)
+	
+	try: connection, client_address = sock.accept()
+	except: return(("Timeout", None))
+	
+	try:
+		data = connection.recv(32).decode()
+		if data != "":
+			out = data + " Received"
+			connection.sendall(out.encode())
+			connection.close()
+			return(("Success", data))
+	except:
+		connection.close()
+		return(("No data", None))
+	return(("Unknown", None))
 	
 def postQueued(file, sensorVars):
 	out = 0
@@ -210,10 +240,11 @@ def keepRunning(minLog, testMode, ser):
 	attemptWaitTime = 5
 	
 	exitServer = chkArduino(minLog, testMode, ser)
-	print("Waiting to try again...\n")
-	lastAttempt = time.time()
+	if exitServer != "Y":
+		print("Waiting to try again...\n")
+		lastAttempt = time.time()
 	while exitServer != "Y":
-		evnt = evntListener()
+		evnt,val = evntListener()
 		if evnt == 'C':
 			print("Cancelled.")
 			exitServer = "Y"
