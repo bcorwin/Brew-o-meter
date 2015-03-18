@@ -1,3 +1,7 @@
+-To do:
+--Check if file is open before trying to write to it.
+--Keep running doesn't always "keep running"
+
 -Event logging:
 -+Failed Upload
 -+Failed Post

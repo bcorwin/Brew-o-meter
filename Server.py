@@ -7,6 +7,7 @@
 
 #Keys: temp_beer, light_amb, temp_amb, key = "beer", instant_override (time stamp)
 
+import socket
 import datetime
 import time
 import serial
@@ -41,23 +42,29 @@ def chkArduino(minLog, testMode, ser):
 		genCompLog(queuedLogs, sensorVars)
 		queuedLogsCnt = 0		
 	
-	print("Press ESC to cancel.")
+	print("Press 'c' to cancel.")
 	while True:
 		currTime = time.time()
-		keyChk = msvcrt.kbhit()
-		if keyChk == 1:
-			keyPressed = msvcrt.getch()
-			if keyPressed == b'\x1b':
-				print(logEvent("Cancelled."))
-				return("Y")
-			elif keyPressed in [b'f', b'F']:
-				forceLog = "Y"
-				print("\n")
-				print(logEvent("Forcing log..."))
-			elif keyPressed in [b'm', b'M']:
-				minLog = int(input("Current log time is " + str(minLog) + ". Enter new value: "))
-				print(logEvent("minLog changed to " + str(minLog)))
-				print("\nReading...")
+		
+		evnt,val = evntListener()
+		if evnt == "C":
+			print(logEvent("Cancelled."))
+			return("Y")
+		elif evnt == "F":
+			forceLog = "Y"
+			print(logEvent("Forcing log..."))
+		elif evnt == "M":
+			if val == None: newVal = input("Current log time is " + str(minLog) + ". Enter new value: ")
+			else: newVal = val
+			try:
+				if newVal != "":
+					minLog = int(newVal)
+					print(logEvent("minLog changed to " + str(minLog)))
+			except ValueError: print("Please enter a number")
+			print("\nReading...")
+		elif evnt == "B":
+			print("Test break.")
+			return(None)
 				
 		#Reading and aggregate
 		if testMode != "Y": readValue = readArduino(ser)
@@ -97,6 +104,48 @@ def chkArduino(minLog, testMode, ser):
 			forceLog = "N" 
 			print("\nReading...")
 
+def evntListener():
+	#Input status (code location) so that can be sent back to server if asked
+	if msvcrt.kbhit() == 1:
+		try: out = msvcrt.getch().decode().upper()
+		except: out = (None, None)
+		return((out, None))
+	else:
+		r, val = socketListener(1)
+		if r == "Success":
+			s = val.split("=")
+			if len(s) > 1: return(s[0].upper(),s[1])
+			else: return((val.upper(),None))
+		else: return((None, None))
+	
+
+def socketListener(timeout):
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	server_ip = socket.gethostbyname(socket.gethostname())
+	server_address = (server_ip, 6005)
+	
+	#COMMENT THIS TO RUN OVER INTERNET
+	server_address = ('localhost', 6005)
+	
+	sock.bind(server_address)
+	sock.listen(1)
+	if timeout != None: sock.settimeout(timeout)
+	
+	try: connection, client_address = sock.accept()
+	except: return(("Timeout", None))
+	
+	try:
+		data = connection.recv(32).decode()
+		if data != "":
+			out = data + " Received"
+			connection.sendall(out.encode())
+			connection.close()
+			return(("Success", data))
+	except:
+		connection.close()
+		return(("No data", None))
+	return(("Unknown", None))
+	
 def postQueued(file, sensorVars):
 	out = 0
 	f = open(file)
@@ -119,7 +168,9 @@ def postQueued(file, sensorVars):
 		if response[0] != 200:
 			log2computer(file, response, data, sensorVars)
 			out += 1
-			print(logEvent("Failed Queued Push|" + response[1] + "|" + str(data["instant_override"])))
+			print(logEvent("Failed Queued Upload|" + response[1] + "|" + str(data["instant_override"])))
+		elif re.search("Success", response[1]) == None:
+			print(logEvent("Failed Queued Post|" + response[1] + "|" + str(data["instant_override"])))
 		else:
 			print(logEvent("Successful Queued Push|" + str(data["instant_override"])))
 	return(out)
@@ -188,20 +239,24 @@ def keepRunning(minLog, testMode, ser):
 	exitServer = "N"
 	forceAttempt = "N"
 	attemptWaitTime = 5
-	lastAttempt = time.time() - 60*attemptWaitTime - 1
-	while exitServer == "N":
-		keyChk = msvcrt.kbhit()
-		if keyChk == 1:
-			keyPressed = msvcrt.getch()
-			if keyPressed == b'\x1b':
-				print("Cancelled.")
-				exitServer = "Y"
-			if keyPressed in (b'f', b'F'):
-				print("Forcing attempt...")
-				forceAttempt = "Y"
+	
+	exitServer = chkArduino(minLog, testMode, ser)
+	if exitServer != "Y":
+		print("Waiting to try again...\n")
+		lastAttempt = time.time()
+	while exitServer != "Y":
+		evnt,val = evntListener()
+		if evnt == 'C':
+			print("Cancelled.")
+			exitServer = "Y"
+		if evnt == "F":
+			print("Forcing attempt...")
+			forceAttempt = "Y"
+			
 		if time.time() > (lastAttempt + 60*attemptWaitTime) or forceAttempt == "Y":
 			lastAttempt = time.time()
 			forceAttempt = "N"
+			print(logEvent("Attempting to restart chkArduino.") + "\n")
 			try: exitServer = chkArduino(minLog, testMode, ser)
 			except:
 				print(str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + " " + logEvent("chkArduino failed for unknown reason"))
@@ -224,5 +279,4 @@ if testMode != "Y":
 	ser = serial.Serial(comPort, 9600)
 else: ser = None
 
-if testMode == "Y": chkArduino(minLog, testMode, ser)
-else: keepRunning(minLog, testMode, ser)
+keepRunning(minLog, testMode, ser)
