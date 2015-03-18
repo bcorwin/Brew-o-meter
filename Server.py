@@ -125,7 +125,7 @@ def socketListener(timeout):
 	server_address = (server_ip, 6005)
 	
 	#COMMENT THIS TO RUN OVER INTERNET
-	server_address = ('localhost', 6005)
+	#server_address = ('localhost', 6005)
 	
 	sock.bind(server_address)
 	sock.listen(1)
