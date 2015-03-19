@@ -86,7 +86,7 @@ def chkArduino(minLog, testMode, ser):
 		for var in sensorVars:
 			readVal = readJSON(var, readValue)
 			if readVal != None:
-				if var.split("_")[0].upper() = "TEMP" and readVal > 80:
+				if var.split("_")[0].upper() == "TEMP" and readVal > 80:
 					logEvent("Large temp reading:" + readValue)
 				allSums[var] = allSums[var] + readJSON(var, readValue)
 				allCnts[var] = allCnts[var] + 1
