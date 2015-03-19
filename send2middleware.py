@@ -2,11 +2,11 @@ def send2middleware(message):
 	import socket	
 	
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	#server_ip = socket.gethostbyname('benjeye.ddns.net')
-	#server_address = (server_ip, 6005)
+	server_ip = socket.gethostbyname('benjeye.ddns.net')
+	server_address = (server_ip, 6005)
 
 	#COMMENT THIS TO RUN OVER INTERNET
-	server_address = ('localhost', 6005)
+	#server_address = ('localhost', 6005)
 	
 	try: sock.connect(server_address)
 	except: return(("Timeout", None))

@@ -140,10 +140,12 @@ def evntListener():
 
 def socketListener(timeout):
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	server_ip = socket.gethostbyname(socket.gethostname())
-	server_address = (server_ip, 6005)
 	
-	if testMode == "Y": server_address = ('localhost', 6005)
+	
+	if testMode != "Y":
+		server_ip = socket.gethostbyname(socket.gethostname())
+		server_address = (server_ip, 6005)
+	else: server_address = ('localhost', 6005)
 	
 	sock.bind(server_address)
 	sock.listen(1)
