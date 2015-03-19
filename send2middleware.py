@@ -4,11 +4,7 @@ def send2middleware(message):
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	server_ip = socket.gethostbyname('benjeye.ddns.net')
 	server_address = (server_ip, 6005)
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> parent of 2190938... Changed method of sending response to Django
 	#COMMENT THIS TO RUN OVER INTERNET
 	#server_address = ('localhost', 6005)
 	

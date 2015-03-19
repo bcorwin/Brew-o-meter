@@ -121,17 +121,11 @@ def evntListener():
 
 def socketListener(timeout):
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	
-<<<<<<< HEAD
-	
+
 	if testMode != "Y":
 		server_ip = socket.gethostbyname(socket.gethostname())
 		server_address = (server_ip, 6005)
 	else: server_address = ('localhost', 6005)
-=======
-	#COMMENT THIS TO RUN OVER INTERNET
-	#server_address = ('localhost', 6005)
->>>>>>> parent of 2190938... Changed method of sending response to Django
 	
 	sock.bind(server_address)
 	sock.listen(1)
