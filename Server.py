@@ -49,6 +49,7 @@ def chkArduino(minLog, testMode, ser):
 		evnt,val, con = evntListener()
 		rr = None
 		if evnt == "C": rr = ("Success", "Cancelled.")
+		elif evnt == "R": rr = ("Success", "Current values:" + str(data))
 		elif evnt == "F":
 			forceLog = "Y"
 			rr = ("Success", "Forcing log...")
