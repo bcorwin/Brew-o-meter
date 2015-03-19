@@ -46,7 +46,7 @@ def chkArduino(minLog, testMode, ser):
 	while True:
 		currTime = time.time()
 		
-		evnt,val, con = evntListener()
+		evnt,val,con = evntListener()
 		rr = None
 		if evnt == "C": rr = ("Success", "Cancelled.")
 		elif evnt == "R":
@@ -66,12 +66,13 @@ def chkArduino(minLog, testMode, ser):
 						rr = ("Success", "minLog changed to " + str(minLog))
 				except ValueError: rr = ("Fail", "Please enter a number.")
 			print("\nReading...")
-		elif evnt != None: rr = ("Fail", "Command does not exist.")
+		elif evnt != None: rr = ("Fail", "Command does not exist:" + str(evnt))
 		
+		if rr != None: logEvent(rr[1])
 		if con != None:
-			con.sendall("|".join(rr).encode())
-			con.close()
-		if rr != None: print(logEvent(rr[1]))
+			try: con.sendall("|".join(rr).encode())
+			except: logEvent("Failed to send response to Django")
+			finally: con.close()
 		if evnt == "C": break
 		
 		#Reading and aggregate
@@ -100,12 +101,10 @@ def chkArduino(minLog, testMode, ser):
 				queuedLogsCnt += 1
 				logEvent("Failed Upload:" + str(response[0]) + ":" + response[1] + ":" + str(data["instant_override"]))
 			elif queuedLogsCnt > 0:
-				print(logEvent("Attempting to upload queued files..."))
+				logEvent("Attempting to upload queued files...")
 				queuedLogsCnt = postQueued(queuedLogs, sensorVars)
-			if response[0] == 200 and re.search("Success", response[1]) == None:
-				logEvent("Failed Post:" + response[1] + ":" + str(data["instant_override"]))
+			if response[0] == 200 and re.search("Success", response[1]) == None: logEvent("Failed Post:" + response[1] + ":" + str(data["instant_override"]))
 				
-			
 			#Reset
 			lastLogAttempt = currTime
 			allSums = vars2pass(True)
@@ -169,11 +168,9 @@ def postQueued(file, sensorVars):
 		if response[0] != 200:
 			log2computer(file, response, data, sensorVars)
 			out += 1
-			print(logEvent("Failed Queued Upload:" + response[1] + ":" + str(data["instant_override"])))
-		elif re.search("Success", response[1]) == None:
-			print(logEvent("Failed Queued Post:" + response[1] + ":" + str(data["instant_override"])))
-		else:
-			print(logEvent("Successful Queued Push:" + str(data["instant_override"])))
+			logEvent("Failed Queued Upload:" + response[1] + ":" + str(data["instant_override"]))
+		elif re.search("Success", response[1]) == None: logEvent("Failed Queued Post:" + response[1] + ":" + str(data["instant_override"]))
+		else: logEvent("Successful Queued Push:" + str(data["instant_override"]))
 	return(out)
 def readArduino(ser):
 	fromArduino = ser.readline()
@@ -206,10 +203,10 @@ def log2computer(fileName, response, data, sensorVars):
 	fd.write(addRow + "\n")
 	fd.close()
 def logEvent(msg):
-	logfile = open("Logs\EVENT LOG.psv", "a")
-	msg = msg.replace('\n', ' ').replace('\r', '')
-	logfile.write(str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + "|" + msg + "\n")	
-	return(msg)	
+	logfile = open("Logs\EVENT LOG.txt", "a")
+	msg = msg.replace('\n', ' ').replace('\r', '').replace('\t', '    ')
+	logfile.write(str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + "\t" + msg + "\n")	
+	print(msg)
 def vars2pass(sensorVarsOnly):
 	if sensorVarsOnly == None: sensorVarsOnly = False
 	if testMode == "Y": key = "test"
