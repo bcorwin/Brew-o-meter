@@ -32,7 +32,7 @@ def chkArduino(minLog, testMode, ser):
 	allCnts = vars2pass(True)
 	data = vars2pass(False)
 	
-	logEvent("Starting|minLog=" + str(minLog) + "|testMode=" + testMode + "|fileName=" + fileName)
+	logEvent("Starting:minLog=" + str(minLog) + ":testMode=" + testMode + ":fileName=" + fileName)
 	
 	forceLog = "N"
 	queuedLogs = "Logs\QUEUED LOGS.csv"
@@ -98,12 +98,12 @@ def chkArduino(minLog, testMode, ser):
 			if  response[0] != 200:
 				log2computer(queuedLogs, response, data, sensorVars)
 				queuedLogsCnt += 1
-				logEvent("Failed Upload|" + str(response[0]) + "|" + response[1] + "|" + str(data["instant_override"]))
+				logEvent("Failed Upload:" + str(response[0]) + ":" + response[1] + ":" + str(data["instant_override"]))
 			elif queuedLogsCnt > 0:
 				print(logEvent("Attempting to upload queued files..."))
 				queuedLogsCnt = postQueued(queuedLogs, sensorVars)
 			if response[0] == 200 and re.search("Success", response[1]) == None:
-				logEvent("Failed Post|" + response[1] + "|" + str(data["instant_override"]))
+				logEvent("Failed Post:" + response[1] + ":" + str(data["instant_override"]))
 				
 			
 			#Reset
@@ -169,11 +169,11 @@ def postQueued(file, sensorVars):
 		if response[0] != 200:
 			log2computer(file, response, data, sensorVars)
 			out += 1
-			print(logEvent("Failed Queued Upload|" + response[1] + "|" + str(data["instant_override"])))
+			print(logEvent("Failed Queued Upload:" + response[1] + ":" + str(data["instant_override"])))
 		elif re.search("Success", response[1]) == None:
-			print(logEvent("Failed Queued Post|" + response[1] + "|" + str(data["instant_override"])))
+			print(logEvent("Failed Queued Post:" + response[1] + ":" + str(data["instant_override"])))
 		else:
-			print(logEvent("Successful Queued Push|" + str(data["instant_override"])))
+			print(logEvent("Successful Queued Push:" + str(data["instant_override"])))
 	return(out)
 def readArduino(ser):
 	fromArduino = ser.readline()
@@ -206,8 +206,9 @@ def log2computer(fileName, response, data, sensorVars):
 	fd.write(addRow + "\n")
 	fd.close()
 def logEvent(msg):
-	logfile = open("Logs\EVENT LOG.csv", "a")
-	logfile.write(str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + "," + msg + "\n")	
+	logfile = open("Logs\EVENT LOG.psv", "a")
+	msg = msg.replace('\n', ' ').replace('\r', '')
+	logfile.write(str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + "|" + msg + "\n")	
 	return(msg)	
 def vars2pass(sensorVarsOnly):
 	if sensorVarsOnly == None: sensorVarsOnly = False
