@@ -15,7 +15,7 @@ def send2middleware(message):
 		# Send data
 		sock.sendall(message.encode())
 		# Look for the response
-		data = sock.recv(64).decode()
+		data = sock.recv(2048).decode()
 		sock.close()
 		r,msg = data.split("|")
 		return((r, msg))
@@ -28,6 +28,7 @@ def send2middleware(message):
 ## F - force a log or attempt to rerun main loop (depends on state)
 ## M=1 - set the log period to 1 minutes (value required)
 ## C - turns off server permanently
+## R - get the averages that are currently in memory
 
 # Example usage:
 ## response, msg = send2middleware("f")
