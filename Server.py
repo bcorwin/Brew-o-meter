@@ -36,8 +36,7 @@ def chkArduino(minLog, testMode, ser):
 	
 	forceLog = "N"
 	queuedLogs = "Logs\QUEUED LOGS.csv"
-	try:
-		queuedLogsCnt = sum(1 for row in csv.reader(open(queuedLogs))) - 1
+	try: queuedLogsCnt = sum(1 for row in csv.reader(open(queuedLogs))) - 1
 	except:
 		genCompLog(queuedLogs, sensorVars)
 		queuedLogsCnt = 0		
@@ -46,34 +45,54 @@ def chkArduino(minLog, testMode, ser):
 	while True:
 		currTime = time.time()
 		
-		evnt,val = evntListener()
+		evnt,val,con = evntListener()
+		rResponse = ("Fail", "No such command exists.")
 		if evnt == "C":
-			print(logEvent("Cancelled."))
+			rResponse = ("Success", "Cancelled.")
+			print(logEvent(rResponse[1]))
+			if con != None:
+				con.sendall("|".join(rResponse).encode())
+				con.close()	
 			return("Y")
 		elif evnt == "F":
 			forceLog = "Y"
-			print(logEvent("Forcing log..."))
+			rResponse = ("Success","Forcing log...")
+			print(logEvent(rResponse[1]))
 		elif evnt == "M":
-			if val == None: newVal = input("Current log time is " + str(minLog) + ". Enter new value: ")
+			if val == None and con == None: newVal = input("Current log time is " + str(minLog) + ". Enter new value: ")
 			else: newVal = val
+
 			try:
 				if newVal != "":
 					minLog = int(newVal)
-					print(logEvent("minLog changed to " + str(minLog)))
-			except ValueError: print("Please enter a number")
+					rResponse = ("Success", "minLog changed to " + str(minLog))
+					print(logEvent(rResponse[1]))
+			except:
+				rResponse = ("Fail", "Please enter a number")
+				print(rResponse[1])
 			print("\nReading...")
 		elif evnt == "B":
-			print("Test break.")
+			rResponse = ("Success","Test break.")
+			print(logEvent(rResponse[1]))
+			if con != None:
+				con.sendall("|".join(rResponse).encode())
+				con.close()		
 			return(None)
-				
+			
+		if con != None:
+			con.sendall("|".join(rResponse).encode())
+			con.close()		
+		
 		#Reading and aggregate
 		if testMode != "Y": readValue = readArduino(ser)
 		else: readValue = "{'light_amb':21, 'temp_amb':75.80}"
 		
 		for var in sensorVars:
-			allSums[var] = allSums[var] + readJSON(var, readValue)
-			allCnts[var] = allCnts[var] + 1
-			data[var] = round(allSums[var]/allCnts[var],1)
+			addVal = readJSON(var, readValue)
+			if addVal != None:
+				allSums[var] = allSums[var] + addVal
+				allCnts[var] = allCnts[var] + 1
+				data[var] = round(allSums[var]/allCnts[var],1)
 			
 		#Logging
 		if currTime > (lastLogAttempt + 60*minLog) or forceLog == "Y":
@@ -108,15 +127,15 @@ def evntListener():
 	#Input status (code location) so that can be sent back to server if asked
 	if msvcrt.kbhit() == 1:
 		try: out = msvcrt.getch().decode().upper()
-		except: out = (None, None)
-		return((out, None))
+		except: out = (None, None, None)
+		return((out, None, None))
 	else:
-		r, val = socketListener(1)
+		r, val, con = socketListener(1)
 		if r == "Success":
 			s = val.split("=")
-			if len(s) > 1: return(s[0].upper(),s[1])
-			else: return((val.upper(),None))
-		else: return((None, None))
+			if len(s) > 1: return(s[0].upper(),s[1], con)
+			else: return((val.upper(),None, con))
+		else: return((None, None, con))
 	
 
 def socketListener(timeout):
@@ -124,27 +143,23 @@ def socketListener(timeout):
 	server_ip = socket.gethostbyname(socket.gethostname())
 	server_address = (server_ip, 6005)
 	
-	#COMMENT THIS TO RUN OVER INTERNET
-	#server_address = ('localhost', 6005)
+	if testMode == "Y": server_address = ('localhost', 6005)
 	
 	sock.bind(server_address)
 	sock.listen(1)
 	if timeout != None: sock.settimeout(timeout)
 	
 	try: connection, client_address = sock.accept()
-	except: return(("Timeout", None))
+	except: return(("Timeout", None, None))
 	
 	try:
 		data = connection.recv(32).decode()
-		if data != "":
-			out = data + " Received"
-			connection.sendall(out.encode())
-			connection.close()
-			return(("Success", data))
+		if data != "": return(("Success", data, connection))
 	except:
 		connection.close()
-		return(("No data", None))
-	return(("Unknown", None))
+		return(("No data", None, None))
+	connection.close()
+	return(("Unknown", None, None))
 	
 def postQueued(file, sensorVars):
 	out = 0
@@ -181,10 +196,8 @@ def readArduino(ser):
 
 def readJSON(var, str):
 	pattern = "'" + var + "':([^,]*)[,}]"
-	if re.search(pattern, str) != None:
-		out = float(re.search(pattern, str, re.IGNORECASE ).group(1))
-	else:
-		out = 0.0
+	try: out = float(re.search(pattern, str, re.IGNORECASE ).group(1))
+	except: out = None
 	return(out)
 
 def logValues2django(data):	
@@ -245,22 +258,30 @@ def keepRunning(minLog, testMode, ser):
 		print("Waiting to try again...\n")
 		lastAttempt = time.time()
 	while exitServer != "Y":
-		evnt,val = evntListener()
-		if evnt == 'C':
-			print("Cancelled.")
+		evnt,val,con = evntListener()
+		rResponse = ("Fail", "No such command exists.")
+		if evnt == "C":
+			rResponse = ("Success","Cancelled.")
+			print(logEvent(rResponse[1]))
 			exitServer = "Y"
-		if evnt == "F":
-			print("Forcing attempt...")
+		elif evnt == "F":
 			forceAttempt = "Y"
-			
+			rResponse = ("Success","Forcing attempt...")
+			print(logEvent(rResponse[1]))
+		
+		if con != None:
+			con.sendall("|".join(rResponse).encode())
+			con.close()	
+		
 		if time.time() > (lastAttempt + 60*attemptWaitTime) or forceAttempt == "Y":
 			lastAttempt = time.time()
 			forceAttempt = "N"
 			print(logEvent("Attempting to restart chkArduino.") + "\n")
 			try: exitServer = chkArduino(minLog, testMode, ser)
-			finally:
+			except:
 				print(str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + " " + logEvent("chkArduino failed for unknown reason"))
 				print("Waiting to try again...\n")
+				continue
 
 #Get arguments:
 if len(sys.argv) > 1:
