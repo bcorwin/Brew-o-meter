@@ -36,7 +36,8 @@ def chkArduino(minLog, testMode, ser):
 	
 	forceLog = "N"
 	queuedLogs = "Logs\QUEUED LOGS.csv"
-	try: queuedLogsCnt = sum(1 for row in csv.reader(open(queuedLogs))) - 1
+	try:
+		queuedLogsCnt = sum(1 for row in csv.reader(open(queuedLogs))) - 1
 	except:
 		genCompLog(queuedLogs, sensorVars)
 		queuedLogsCnt = 0		
@@ -45,54 +46,34 @@ def chkArduino(minLog, testMode, ser):
 	while True:
 		currTime = time.time()
 		
-		evnt,val,con = evntListener()
-		rResponse = ("Fail", "No such command exists.")
+		evnt,val = evntListener()
 		if evnt == "C":
-			rResponse = ("Success", "Cancelled.")
-			print(logEvent(rResponse[1]))
-			if con != None:
-				con.sendall("|".join(rResponse).encode())
-				con.close()	
+			print(logEvent("Cancelled."))
 			return("Y")
 		elif evnt == "F":
 			forceLog = "Y"
-			rResponse = ("Success","Forcing log...")
-			print(logEvent(rResponse[1]))
+			print(logEvent("Forcing log..."))
 		elif evnt == "M":
-			if val == None and con == None: newVal = input("Current log time is " + str(minLog) + ". Enter new value: ")
+			if val == None: newVal = input("Current log time is " + str(minLog) + ". Enter new value: ")
 			else: newVal = val
-
 			try:
 				if newVal != "":
 					minLog = int(newVal)
-					rResponse = ("Success", "minLog changed to " + str(minLog))
-					print(logEvent(rResponse[1]))
-			except:
-				rResponse = ("Fail", "Please enter a number")
-				print(rResponse[1])
+					print(logEvent("minLog changed to " + str(minLog)))
+			except ValueError: print("Please enter a number")
 			print("\nReading...")
 		elif evnt == "B":
-			rResponse = ("Success","Test break.")
-			print(logEvent(rResponse[1]))
-			if con != None:
-				con.sendall("|".join(rResponse).encode())
-				con.close()		
+			print("Test break.")
 			return(None)
-			
-		if con != None:
-			con.sendall("|".join(rResponse).encode())
-			con.close()		
-		
+				
 		#Reading and aggregate
 		if testMode != "Y": readValue = readArduino(ser)
 		else: readValue = "{'light_amb':21, 'temp_amb':75.80}"
 		
 		for var in sensorVars:
-			addVal = readJSON(var, readValue)
-			if addVal != None:
-				allSums[var] = allSums[var] + addVal
-				allCnts[var] = allCnts[var] + 1
-				data[var] = round(allSums[var]/allCnts[var],1)
+			allSums[var] = allSums[var] + readJSON(var, readValue)
+			allCnts[var] = allCnts[var] + 1
+			data[var] = round(allSums[var]/allCnts[var],1)
 			
 		#Logging
 		if currTime > (lastLogAttempt + 60*minLog) or forceLog == "Y":
@@ -127,41 +108,49 @@ def evntListener():
 	#Input status (code location) so that can be sent back to server if asked
 	if msvcrt.kbhit() == 1:
 		try: out = msvcrt.getch().decode().upper()
-		except: out = (None, None, None)
-		return((out, None, None))
+		except: out = (None, None)
+		return((out, None))
 	else:
-		r, val, con = socketListener(1)
+		r, val = socketListener(1)
 		if r == "Success":
 			s = val.split("=")
-			if len(s) > 1: return(s[0].upper(),s[1], con)
-			else: return((val.upper(),None, con))
-		else: return((None, None, con))
+			if len(s) > 1: return(s[0].upper(),s[1])
+			else: return((val.upper(),None))
+		else: return((None, None))
 	
 
 def socketListener(timeout):
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	
+<<<<<<< HEAD
 	
 	if testMode != "Y":
 		server_ip = socket.gethostbyname(socket.gethostname())
 		server_address = (server_ip, 6005)
 	else: server_address = ('localhost', 6005)
+=======
+	#COMMENT THIS TO RUN OVER INTERNET
+	#server_address = ('localhost', 6005)
+>>>>>>> parent of 2190938... Changed method of sending response to Django
 	
 	sock.bind(server_address)
 	sock.listen(1)
 	if timeout != None: sock.settimeout(timeout)
 	
 	try: connection, client_address = sock.accept()
-	except: return(("Timeout", None, None))
+	except: return(("Timeout", None))
 	
 	try:
 		data = connection.recv(32).decode()
-		if data != "": return(("Success", data, connection))
+		if data != "":
+			out = data + " Received"
+			connection.sendall(out.encode())
+			connection.close()
+			return(("Success", data))
 	except:
 		connection.close()
-		return(("No data", None, None))
-	connection.close()
-	return(("Unknown", None, None))
+		return(("No data", None))
+	return(("Unknown", None))
 	
 def postQueued(file, sensorVars):
 	out = 0
@@ -199,7 +188,7 @@ def readArduino(ser):
 def readJSON(var, str):
 	pattern = "'" + var + "':([^,]*)[,}]"
 	try: out = float(re.search(pattern, str, re.IGNORECASE ).group(1))
-	except: out = None
+	except: out = 0.0
 	return(out)
 
 def logValues2django(data):	
@@ -260,21 +249,14 @@ def keepRunning(minLog, testMode, ser):
 		print("Waiting to try again...\n")
 		lastAttempt = time.time()
 	while exitServer != "Y":
-		evnt,val,con = evntListener()
-		rResponse = ("Fail", "No such command exists.")
-		if evnt == "C":
-			rResponse = ("Success","Cancelled.")
-			print(logEvent(rResponse[1]))
+		evnt,val = evntListener()
+		if evnt == 'C':
+			print("Cancelled.")
 			exitServer = "Y"
-		elif evnt == "F":
+		if evnt == "F":
+			print("Forcing attempt...")
 			forceAttempt = "Y"
-			rResponse = ("Success","Forcing attempt...")
-			print(logEvent(rResponse[1]))
-		
-		if con != None:
-			con.sendall("|".join(rResponse).encode())
-			con.close()	
-		
+			
 		if time.time() > (lastAttempt + 60*attemptWaitTime) or forceAttempt == "Y":
 			lastAttempt = time.time()
 			forceAttempt = "N"
