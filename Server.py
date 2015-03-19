@@ -206,9 +206,9 @@ def log2computer(fileName, response, data, sensorVars):
 	fd.write(addRow + "\n")
 	fd.close()
 def logEvent(msg):
-	logfile = open("Logs\EVENT LOG.psv", "a")
-	msg = msg.replace('\n', ' ').replace('\r', '')
-	logfile.write(str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + "|" + msg + "\n")	
+	logfile = open("Logs\EVENT LOG.txt", "a")
+	msg = msg.replace('\n', ' ').replace('\r', '').replace('\t', '    ')
+	logfile.write(str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + "\t" + msg + "\n")	
 	return(msg)	
 def vars2pass(sensorVarsOnly):
 	if sensorVarsOnly == None: sensorVarsOnly = False
