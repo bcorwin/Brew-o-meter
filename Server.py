@@ -32,17 +32,17 @@ def chkArduino(minLog, testMode, ser):
 	allCnts = vars2pass(True)
 	data = vars2pass(False)
 	
+	print("\n")
 	logEvent("Starting:minLog=" + str(minLog) + ":testMode=" + testMode + ":fileName=" + fileName)
 	
 	forceLog = "N"
 	queuedLogs = "Logs\QUEUED LOGS.csv"
-	try:
-		queuedLogsCnt = sum(1 for row in csv.reader(open(queuedLogs))) - 1
+	try: queuedLogsCnt = sum(1 for row in csv.reader(open(queuedLogs))) - 1
 	except:
 		genCompLog(queuedLogs, sensorVars)
 		queuedLogsCnt = 0		
-	
-	print("Press 'c' to cancel.")
+		
+	print("\nPress 'c' to cancel.")
 	while True:
 		currTime = time.time()
 		
@@ -50,31 +50,35 @@ def chkArduino(minLog, testMode, ser):
 		rr = None
 		if evnt == "C": rr = ("Success", "Cancelled.")
 		elif evnt == "R":
-			if val.upper() in [x.upper() for x in sensorVars]: rr = ("Success", str(val) + ":" + str(data[val]))
+			if val == None: rr = ("Success", str(data))
+			elif val.upper() in [x.upper() for x in sensorVars]: rr = ("Success", str(val) + ":" + str(data[val]))
 			else: rr = ("Fail", str(val) + " is not valid.")
 		elif evnt == "F":
 			forceLog = "Y"
 			rr = ("Success", "Forcing log...")
 		elif evnt == "M":
-			if val == None and con == None: newVal = input("Current log time is " + str(minLog) + ". Enter new value: ")
-			elif val == None or val == "": rr = ("Fail", "Number needed. minLog=" + str(minLog))
+			if (val == None or val == "") and con != None: rr = ("Fail", "Number needed. minLog=" + str(minLog))
 			else:
-				newVal = val
+				if val == None and con == None: newVal = input("Current log time is " + str(minLog) + ". Enter new value: ")
+				else: newVal = val
 				try:
 					if newVal != "":
 						minLog = int(newVal)
-						rr = ("Success", "minLog changed to " + str(minLog))
-				except ValueError: rr = ("Fail", "Please enter a number.")
-			print("\nReading...")
+						rr = ("Success", "Changed now minLog=" + str(minLog))
+					else: rr = ("Success", "Not changed from minLog=" + str(minLog))
+				except ValueError: rr = ("Fail", "Please enter a number. minLog=" + str(minLog))
 		elif evnt != None: rr = ("Fail", "Command does not exist:" + str(evnt))
 		
-		if rr != None: logEvent(rr[1])
 		if con != None:
 			try: con.sendall("|".join(rr).encode())
 			except: logEvent("Failed to send response to Django")
 			finally: con.close()
-		if evnt == "C": break
-		
+		if rr != None:
+			logEvent(rr[1])
+			#Final notes:
+			if evnt == "C": break
+			elif evnt != "F": print("Reading...")
+
 		#Reading and aggregate
 		if testMode != "Y": readValue = readArduino(ser)
 		else: readValue = "{'light_amb':21, 'temp_amb':75.80}"
@@ -82,6 +86,8 @@ def chkArduino(minLog, testMode, ser):
 		for var in sensorVars:
 			readVal = readJSON(var, readValue)
 			if readVal != None:
+				if var.split("_")[0].upper() = "TEMP" and readVal > 80:
+					logEvent("Large temp reading:" + readValue)
 				allSums[var] = allSums[var] + readJSON(var, readValue)
 				allCnts[var] = allCnts[var] + 1
 				data[var] = round(allSums[var]/allCnts[var],1)
@@ -204,9 +210,9 @@ def log2computer(fileName, response, data, sensorVars):
 	fd.close()
 def logEvent(msg):
 	logfile = open("Logs\EVENT LOG.txt", "a")
-	msg = msg.replace('\n', ' ').replace('\r', '').replace('\t', '    ')
+	msg = str(msg).replace('\n', ' ').replace('\r', '').replace('\t', '    ')
 	logfile.write(str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + "\t" + msg + "\n")	
-	print(msg)
+	print("Logged: " + msg)
 def vars2pass(sensorVarsOnly):
 	if sensorVarsOnly == None: sensorVarsOnly = False
 	if testMode == "Y": key = "test"
