@@ -142,7 +142,7 @@ def socketListener(timeout):
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	
 	
-	if testMode != "N":
+	if testMode != "Y":
 		server_ip = socket.gethostbyname(socket.gethostname())
 		server_address = (server_ip, 6005)
 	else: server_address = ('localhost', 6005)
