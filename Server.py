@@ -44,8 +44,8 @@ def chkArduino(minLog, testMode, ser):
 		
 		evnt,val,con = evntListener()
 		rr = None
-		#if evnt == "C": rr = ("Success", "Cancelled.")
-		elif evnt == "R":
+		
+		if evnt == "R":
 			if val == None: rr = ("Success", str(data))
 			elif val.upper() in [x.upper() for x in sensorVars]: rr = ("Success", str(val) + ":" + str(data[val]))
 			else: rr = ("Fail", str(val) + " is not valid.")
@@ -64,6 +64,7 @@ def chkArduino(minLog, testMode, ser):
 					else: rr = ("Success", "Not changed from minLog=" + str(minLog))
 				except ValueError: rr = ("Fail", "Please enter a number. minLog=" + str(minLog))
 		elif evnt != None: rr = ("Fail", "Command does not exist:" + str(evnt))
+		#elif evnt == "C": rr = ("Success", "Cancelled.")
 		
 		if con != None:
 			try: con.sendall("|".join(rr).encode())
