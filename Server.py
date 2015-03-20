@@ -229,7 +229,7 @@ def vars2pass(sensorVarsOnly):
 	if sensorVarsOnly == None: sensorVarsOnly = False
 	if testMode == "Y": key = "test"
 	else: key = "beer"
-	key = "test" #Change this back later
+
 	otherVars = {
 		"key": key,
 		"instant_override": 0,
