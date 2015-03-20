@@ -190,7 +190,8 @@ def postQueued(file, sensorVars):
 		else: logEvent("Successful Queued Push:" + str(data["instant_override"]))
 	return(out)
 def readArduino(ser):
-	ser.writelines(b'READY.')
+	ser.flushInput()
+	ser.write(b'R')
 	msg = ser.readline()
 	return msg.decode("utf-8")
 def readJSON(var, str):
@@ -228,6 +229,7 @@ def vars2pass(sensorVarsOnly):
 	if sensorVarsOnly == None: sensorVarsOnly = False
 	if testMode == "Y": key = "test"
 	else: key = "beer"
+	key = "test" #Change this back later
 	otherVars = {
 		"key": key,
 		"instant_override": 0,
@@ -264,7 +266,11 @@ if testMode == None: testMode = input("Test mode? (Y/N) ").upper()
 if testMode != "Y":
 	if comPort == None: comPort = input("Enter COM port: ").upper()
 	comPort = "COM" + str(comPort)
-	ser = serial.Serial(comPort, 9600)
+	ser = serial.Serial(comPort, 9600, timeout = 1)
+	
+	ser.flushInput()
+	ser.write(b'E')
+	ser.readline()
 else: ser = None
 
 chkArduino(minLog, testMode, ser)
