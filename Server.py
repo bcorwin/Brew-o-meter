@@ -38,13 +38,13 @@ def chkArduino(minLog, testMode, ser):
 		genCompLog(queuedLogs, sensorVars)
 		queuedLogsCnt = 0		
 		
-	print("\nPress 'c' to cancel.")
+	#print("\nPress 'c' to cancel.")
 	while True:
 		currTime = time.time()
 		
 		evnt,val,con = evntListener()
 		rr = None
-		if evnt == "C": rr = ("Success", "Cancelled.")
+		#if evnt == "C": rr = ("Success", "Cancelled.")
 		elif evnt == "R":
 			if val == None: rr = ("Success", str(data))
 			elif val.upper() in [x.upper() for x in sensorVars]: rr = ("Success", str(val) + ":" + str(data[val]))
@@ -72,8 +72,9 @@ def chkArduino(minLog, testMode, ser):
 		if rr != None:
 			logEvent(rr[1])
 			#Final notes:
-			if evnt == "C": break
-			elif evnt != "F": print("Reading...")
+			if evnt != "F": print("Reading...")
+			#elif evnt == "C": break
+			
 
 		#Reading and aggregate
 		if testMode != "Y": readValue = readArduino(ser)

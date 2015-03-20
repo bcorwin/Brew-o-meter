@@ -33,7 +33,7 @@ send2middleware("r=light_beer")	= ('Fail', 'light_beer is not valid.')
 send2middleware("r=")		= ('Fail', ' is not valid.')
 
 ----------------------------------------------------------------
-
+!!DEFUNCT!!
 C - Turns off server permanently, will require access to the server to turn it back on
 
 send2middleware("c", True)	= ('Success', 'Cancelled.')
