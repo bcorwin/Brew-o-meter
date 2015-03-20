@@ -28,7 +28,6 @@ def chkArduino(minLog, testMode, ser):
 	tempVals = vars2pass(True)
 	data = vars2pass(False)
 	
-	print("\n")
 	logEvent("Starting:minLog=" + str(minLog) + ":testMode=" + testMode + ":fileName=" + fileName)
 	
 	forceLog = "N"
@@ -36,9 +35,12 @@ def chkArduino(minLog, testMode, ser):
 	try: queuedLogsCnt = sum(1 for row in csv.reader(open(queuedLogs))) - 1
 	except:
 		genCompLog(queuedLogs, sensorVars)
-		queuedLogsCnt = 0		
+		queuedLogsCnt = 0
+	try: f = open("Logs\FAILED QUEUES.csv")
+	except: genCompLog("Logs\FAILED QUEUES.csv", sensorVars)
 		
 	#print("\nPress 'c' to cancel.")
+	print("\nReading...")
 	while True:
 		currTime = time.time()
 		
@@ -46,7 +48,7 @@ def chkArduino(minLog, testMode, ser):
 		rr = None
 		
 		if evnt == "R":
-			if val == None: rr = ("Success", str(data))
+			if val == None: rr = ("Success", "Current values:" + str(data))
 			elif val.upper() in [x.upper() for x in sensorVars]: rr = ("Success", str(val) + ":" + str(data[val]))
 			else: rr = ("Fail", str(val) + " is not valid.")
 		elif evnt == "F":
@@ -128,8 +130,7 @@ def chkArduino(minLog, testMode, ser):
 			allSums = vars2pass(True)
 			allCnts = vars2pass(True)
 			tempVals = vars2pass(True)
-			forceLog = "N" 
-			print("\nReading...")
+			forceLog = "N"
 def evntListener():
 	#Input status (code location) so that can be sent back to server if asked
 	if msvcrt.kbhit() == 1:
@@ -166,7 +167,6 @@ def socketListener(timeout):
 		return(("No data", None, None))
 	return(("Unknown", None, None))
 def postQueued(file, sensorVars):
-	out = 0
 	f = open(file)
 	vals = [row for row in csv.reader(f)]
 	f.close()
@@ -184,13 +184,11 @@ def postQueued(file, sensorVars):
 		data["instant_override"] = int(row[columns["instant_override"]])
 		
 		response = logValues2django(data)
-		if response[0] != 200:
-			log2computer(file, response, data, sensorVars)
-			out += 1
+		if response[0] != 200 or re.search("Success", response[1]) == None:
+			log2computer("Logs\FAILED QUEUES.csv", response, data, sensorVars)
 			logEvent("Failed Queued Upload:" + response[1] + ":" + str(data["instant_override"]))
-		elif re.search("Success", response[1]) == None: logEvent("Failed Queued Post:" + response[1] + ":" + str(data["instant_override"]))
 		else: logEvent("Successful Queued Push:" + str(data["instant_override"]))
-	return(out)
+	return(0)
 def readArduino(ser):
 	ser.flushInput()
 	ser.write(b'R')
