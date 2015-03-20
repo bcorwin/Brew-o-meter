@@ -22,5 +22,5 @@ void loop() {
   Serial.print(temp_amb_val);
   
   Serial.print("}\n");
-  delay(500);
+  delay(1000);
 }
