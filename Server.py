@@ -30,6 +30,7 @@ def chkArduino(minLog, testMode, ser):
 	lastLogAttempt = time.time()-60*minLog - 1
 	allSums = vars2pass(True)
 	allCnts = vars2pass(True)
+	tempVals = vars2pass(True)
 	data = vars2pass(False)
 	
 	print("\n")
@@ -81,16 +82,30 @@ def chkArduino(minLog, testMode, ser):
 
 		#Reading and aggregate
 		if testMode != "Y": readValue = readArduino(ser)
-		else: readValue = "{'light_amb':21, 'temp_amb':75.80}"
+		else: readValue = "{'chk_sum':96.80, 'light_amb':21, 'temp_amb':75.80}"
 		
 		for var in sensorVars:
 			readVal = readJSON(var, readValue)
 			if readVal != None:
 				if var.split("_")[0].upper() == "TEMP" and readVal > 80:
 					logEvent("Large temp reading:" + readValue)
-				allSums[var] = allSums[var] + readJSON(var, readValue)
+				tempVals[var] = readVal
+		
+		try:
+			chk_sum = float(readJSON("chk_sum", readValue))
+			r_chk_sum = sum([tempVals[n] for n in tempVals])
+		except:
+			chk_sum = None
+			r_chk_sum = None
+		
+		if chk_sum == None or r_chk_sum == None or chk_sum != r_chk_sum:
+			logEvent("Error: chk_sum does not match:" + str(readValue))
+		else:
+			for var in sensorVars:
+				allSums[var] = allSums[var] + tempVals[var]
 				allCnts[var] = allCnts[var] + 1
 				data[var] = round(allSums[var]/allCnts[var],1)
+	
 			
 		#Logging
 		if currTime > (lastLogAttempt + 60*minLog) or forceLog == "Y":
@@ -115,6 +130,7 @@ def chkArduino(minLog, testMode, ser):
 			lastLogAttempt = currTime
 			allSums = vars2pass(True)
 			allCnts = vars2pass(True)
+			tempVals = vars2pass(True)
 			forceLog = "N" 
 			print("\nReading...")
 def evntListener():
@@ -179,9 +195,8 @@ def postQueued(file, sensorVars):
 		else: logEvent("Successful Queued Push:" + str(data["instant_override"]))
 	return(out)
 def readArduino(ser):
-	fromArduino = ser.readline()
-	message = fromArduino.decode("utf-8")
-	return message
+	msg = ser.readline()
+	return msg.decode("utf-8")
 def readJSON(var, str):
 	pattern = "'" + var + "':([^,]*)[,}]"
 	try: out = float(re.search(pattern, str, re.IGNORECASE ).group(1))
