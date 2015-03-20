@@ -17,11 +17,6 @@ import re
 import requests
 import sys
 
-#Defaults
-minLog = 15 #Number of minutes between logs to Django (data under this is aggregated)
-testMode = None
-comPort = None
-
 def chkArduino(minLog, testMode, ser):
 	sensorVars = [x for x in vars2pass(True)]
 	sensorVars.sort()
@@ -195,6 +190,7 @@ def postQueued(file, sensorVars):
 		else: logEvent("Successful Queued Push:" + str(data["instant_override"]))
 	return(out)
 def readArduino(ser):
+	ser.writelines(b'READY.')
 	msg = ser.readline()
 	return msg.decode("utf-8")
 def readJSON(var, str):
@@ -248,6 +244,11 @@ def vars2pass(sensorVarsOnly):
 		out = otherVars.copy()
 		out.update(sensorVars)
 	return(out)
+
+#Defaults
+minLog = 15 #Number of minutes between logs to Django (data under this is aggregated)
+testMode = None
+comPort = None
 
 #Get arguments:
 if len(sys.argv) > 1:
