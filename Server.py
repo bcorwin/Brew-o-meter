@@ -112,6 +112,7 @@ def chkArduino(minLog, testMode, ser):
 			
 		#Logging
 		if currTime > (lastLogAttempt + 60*minLog) or forceLog == "Y":
+			genCompLog("Logs\READ VALUES.csv", sensorVars)
 			data["instant_override"] = int(round(datetime.datetime.now().timestamp(),0))
 			
 			response = logValues2django(data)
