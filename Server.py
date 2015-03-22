@@ -36,7 +36,7 @@ def chkArduino(minLog, testMode, ser):
 	except:
 		genCompLog(queuedLogs, sensorVars)
 		queuedLogsCnt = 0
-	try: f = open("Logs\FAILED QUEUES.csv")
+	try: open("Logs\FAILED QUEUES.csv")
 	except: genCompLog("Logs\FAILED QUEUES.csv", sensorVars)
 		
 	#print("\nPress 'c' to cancel.")
