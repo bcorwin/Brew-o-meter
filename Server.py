@@ -91,8 +91,8 @@ def chkArduino(minLog, testMode, ser):
 				tempVals[var] = readVal
 		
 		try:
-			chk_sum = round(readJSON("chk_sum", readValue),0)
-			r_chk_sum = round(sum([tempVals[n] for n in tempVals]),0)
+			chk_sum = int(readJSON("chk_sum", readValue))
+			r_chk_sum = int(sum([tempVals[n] for n in tempVals]))
 		except:
 			chk_sum = None
 			r_chk_sum = None
