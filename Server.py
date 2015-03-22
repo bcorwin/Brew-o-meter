@@ -38,6 +38,8 @@ def chkArduino(minLog, testMode, ser):
 		queuedLogsCnt = 0
 	try: open("Logs\FAILED QUEUES.csv")
 	except: genCompLog("Logs\FAILED QUEUES.csv", sensorVars)
+	
+	genCompLog("Logs\READ VALUES.csv", sensorVars)
 		
 	#print("\nPress 'c' to cancel.")
 	print("\nReading...")
@@ -81,7 +83,7 @@ def chkArduino(minLog, testMode, ser):
 
 		#Reading and aggregate
 		if testMode != "Y": readValue = readArduino(ser)
-		else: readValue = "{'chk_sum':96.80, 'light_amb':21, 'temp_amb':75.80}"
+		else: readValue = "{'chk_sum':96.80, 'light_amb':21,.00 'temp_amb':75.80}"
 
 		for var in sensorVars:
 			readVal = readJSON(var, readValue)
@@ -96,7 +98,7 @@ def chkArduino(minLog, testMode, ser):
 		except:
 			chk_sum = None
 			r_chk_sum = None
-
+		
 		if chk_sum == None or r_chk_sum == None or chk_sum != r_chk_sum:
 			logEvent("Error: chk_sum does not match:" + str(readValue))
 		else:
@@ -104,6 +106,8 @@ def chkArduino(minLog, testMode, ser):
 				allSums[var] = allSums[var] + tempVals[var]
 				allCnts[var] = allCnts[var] + 1
 				data[var] = round(allSums[var]/allCnts[var],1)
+			log2computer("Logs\READ VALUES.csv", [-1,"NONE"], tempVals, sensorVars)
+			
 	
 			
 		#Logging
@@ -212,10 +216,13 @@ def genCompLog(fileName, sensorVars):
 		logfile = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 		logfile.writerow(['Timestamp'] + ['instant_override'] + ['Server Code'] +  ['Server Response Text'] + [x for x in sensorVars])
 	return fileName
-def log2computer(fileName, response, data, sensorVars):
-	addRow  = str(datetime.datetime.fromtimestamp(data["instant_override"]).strftime('%Y-%m-%d %H:%M:%S')) + "," + str(data["instant_override"]) + ","
+def log2computer(fileName, response, vals, sensorVars):
+	if "instant_override" not in vals: timestamp = int(round(datetime.datetime.now().timestamp(),0))
+	else: timestamp = vals["instant_override"]
+	
+	addRow  = str(datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')) + "," + str(timestamp) + ","
 	addRow += str(response[0]) + "," + response[1]
-	for var in sensorVars: addRow += "," + str(data[var])
+	for var in sensorVars: addRow += "," + str(vals[var])
 	
 	fd = open(fileName,'a')
 	fd.write(addRow + "\n")
