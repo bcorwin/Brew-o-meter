@@ -16,7 +16,7 @@ void loop() {
     float pres_beer_val = analogRead(pres_beer);
     
     float chk_sum = light_val + temp_amb_val + temp_beer_val + pres_beer_val;
-  
+    
     Serial.print("{");
     
     Serial.print("'chk_sum':");
@@ -34,7 +34,7 @@ void loop() {
     Serial.print(", 'pres_beer':");
     Serial.print(pres_beer_val);
     
-    Serial.print("}\n");
+    Serial.println("}");
   } else if(req == 69) {
     Serial.println("Established");
   }

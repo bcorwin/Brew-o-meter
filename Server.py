@@ -82,7 +82,7 @@ def chkArduino(minLog, testMode, ser):
 		#Reading and aggregate
 		if testMode != "Y": readValue = readArduino(ser)
 		else: readValue = "{'chk_sum':96.80, 'light_amb':21, 'temp_amb':75.80}"
-		
+
 		for var in sensorVars:
 			readVal = readJSON(var, readValue)
 			if readVal != None:
@@ -91,19 +91,19 @@ def chkArduino(minLog, testMode, ser):
 				tempVals[var] = readVal
 		
 		try:
-			chk_sum = int(readJSON("chk_sum", readValue))
-			r_chk_sum = sum([tempVals[n] for n in tempVals])
+			chk_sum = round(readJSON("chk_sum", readValue),0)
+			r_chk_sum = round(sum([tempVals[n] for n in tempVals]),0)
 		except:
 			chk_sum = None
 			r_chk_sum = None
-		
-		#if chk_sum == None or r_chk_sum == None or chk_sum != r_chk_sum:
-		#	logEvent("Error: chk_sum does not match:" + str(readValue))
-		#else:
-		for var in sensorVars:
-			allSums[var] = allSums[var] + tempVals[var]
-			allCnts[var] = allCnts[var] + 1
-			data[var] = round(allSums[var]/allCnts[var],1)
+
+		if chk_sum == None or r_chk_sum == None or chk_sum != r_chk_sum:
+			logEvent("Error: chk_sum does not match:" + str(readValue))
+		else:
+			for var in sensorVars:
+				allSums[var] = allSums[var] + tempVals[var]
+				allCnts[var] = allCnts[var] + 1
+				data[var] = round(allSums[var]/allCnts[var],1)
 	
 			
 		#Logging
@@ -113,7 +113,7 @@ def chkArduino(minLog, testMode, ser):
 			response = logValues2django(data)
 			log2computer(fileName, response, data, sensorVars)
 			
-			print(str(datetime.datetime.fromtimestamp(data["instant_override"]).strftime('%Y-%m-%d %H:%M')) + " " + response[1])
+			print(str(datetime.datetime.fromtimestamp(data["instant_override"]).strftime('%Y-%m-%d %H:%M:%S')) + "\t" + response[1])
 			
 			#Log failed attempts for later upload
 			if  response[0] != 200:
@@ -221,10 +221,9 @@ def log2computer(fileName, response, data, sensorVars):
 	fd.write(addRow + "\n")
 	fd.close()
 def logEvent(msg):
-	logfile = open("Logs\EVENT LOG.txt", "a")
 	msg = str(msg).replace('\n', ' ').replace('\r', '').replace('\t', '    ')
-	logfile.write(str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + "\t" + msg + "\n")	
-	print("Logged: " + msg)
+	msg = str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + "\tLogged: " + msg
+	print(msg)
 def vars2pass(sensorVarsOnly):
 	if sensorVarsOnly == None: sensorVarsOnly = False
 	if testMode == "Y": key = "test"
