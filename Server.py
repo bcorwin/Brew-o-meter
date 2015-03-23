@@ -249,7 +249,8 @@ def genCompLog(fileName, sensorVars):
 		logfile.writerow(['Timestamp'] + ['instant_override'] + ['Server Code'] +  ['Server Response Text'] + [x for x in sensorVars])
 	return fileName
 def log2computer(fileName, response, vals, sensorVars):
-	if "instant_override" not in vals: timestamp = int(round(datetime.datetime.now().timestamp(),0))
+	if "instant_override" not in vals or vals["instant_override"] == 0:
+		timestamp = int(round(datetime.datetime.now().timestamp(),0))
 	else: timestamp = vals["instant_override"]
 	
 	addRow  = str(datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')) + "," + str(timestamp) + ","
@@ -285,7 +286,6 @@ def vars2pass(sensorVarsOnly, testMode):
 		out = otherVars.copy()
 		out.update(sensorVars)
 	return(out)
-
 def initialize():
 	minLog = 15 #Number of minutes between logs to Django (data under this is aggregated)
 	testMode = None
