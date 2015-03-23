@@ -34,10 +34,16 @@ send2middleware("r=")		= ('Fail', ' is not valid.')
 
 ----------------------------------------------------------------
 
-O=var_name - Turns off data collection and logging
+O - Turns off data collection and logging
 
-send2middleware("O")	= ('Success', 'temp_amb:75.8')
+send2middleware("O")	= ('Success', 'Data collection off.')
+send2middleware("O")	= ('Fail', 'Was already off.')
+----------------------------------------------------------------
 
+L - Turns off data collection and logging
+
+send2middleware("L")	= ('Success', 'Data collection on.')
+send2middleware("L")	= ('Fail', 'Was already on.')
 
 ----------------------------------------------------------------
 !!DEFUNCT!!

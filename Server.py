@@ -23,11 +23,15 @@ def chkArduino():
 	sensorVars = [x for x in vars2pass(True, testMode)]
 	sensorVars.sort()
 	fileName = genCompLog("Logs\SENSOR LOG " + str(datetime.datetime.now().strftime("%Y%m%d_%H%M")) + ".csv", sensorVars)
+	fileName_h = genCompLog(re.sub(".csv", "_h.csv", fileName), sensorVars)
 	#Initialize vars
 	lastLogAttempt = time.time()-60*minLog - 1
 	allSums = vars2pass(True, testMode)
 	allCnts = vars2pass(True, testMode)
 	data = vars2pass(False, testMode)
+	allSums_h = vars2pass(True, testMode)
+	allCnts_h = vars2pass(True, testMode)
+	data_h = vars2pass(False, testMode)
 	
 	logEvent("Starting:minLog=" + str(minLog) + ":testMode=" + testMode + ":fileName=" + fileName)
 	
@@ -56,17 +60,17 @@ def chkArduino():
 			else: rr = ("Fail", str(val) + " is not valid.")
 		elif evnt == "O":
 			if loggingOn == "Y": rr = ("Success", "Data collection off.")
-			else: rr = ("Fail", "Data collection was already off.")
+			else: rr = ("Fail", "Was already off.")
 			loggingOn = "N"
 		elif evnt == "L":
 			if loggingOn == "N": rr = ("Success", "Data collection on.")
-			else: rr = ("Fail", "Data collection was already on.")
+			else: rr = ("Fail", "Was already on.")
 			loggingOn = "Y"
 		elif evnt == "F":
 			if loggingOn == "Y":
 				forceLog = "Y"
 				rr = ("Success", "Forcing log...")
-			else: rr = ("Fail", "Logging must be on to fource log.")
+			else: rr = ("Fail", "Must be on to force log.")
 		elif evnt == "M":
 			if loggingOn == "Y":
 				if (val == None or val == "") and con != None: rr = ("Fail", "Number needed. minLog=" + str(minLog))
@@ -79,7 +83,7 @@ def chkArduino():
 							rr = ("Success", "Changed now minLog=" + str(minLog))
 						else: rr = ("Success", "Not changed from minLog=" + str(minLog))
 					except ValueError: rr = ("Fail", "Please enter a number. minLog=" + str(minLog))
-			else: rr = ("Fail", "Logging must be on to change frequency.")
+			else: rr = ("Fail", "Must be on to change frequency.")
 		elif evnt != None: rr = ("Fail", "Command does not exist:" + str(evnt))
 		#elif evnt == "C": rr = ("Success", "Cancelled.")
 		
@@ -95,15 +99,19 @@ def chkArduino():
 		if loggingOn == "Y":
 			#Reading and aggregate
 			data, allSums, allCnts = readData(allSums, allCnts, ser, testMode, sensorVars)
+			data_h, allSums_h, allCnts_h = readData(allSums_h, allCnts_h, ser, testMode, sensorVars)
 				
 			#Logging
 			if currTime > (lastLogAttempt + 60*minLog) or forceLog == "Y":
 				queuedLogsCnt = logData(queuedLogsCnt, data, fileName, sensorVars, testMode)
+				log2computer(fileName_h, [-1,"NONE"], data_h, sensorVars)
 					
 				#Reset
 				lastLogAttempt = currTime
 				allSums = vars2pass(True, testMode)
 				allCnts = vars2pass(True, testMode)
+				allSums_h = vars2pass(True, testMode)
+				allCnts_h = vars2pass(True, testMode)
 				forceLog = "N"
 def logData(queuedLogsCnt, data, fileName, sensorVars, testMode):
 	genCompLog("Logs\READ VALUES.csv", sensorVars)
@@ -125,7 +133,7 @@ def logData(queuedLogsCnt, data, fileName, sensorVars, testMode):
 	if response[0] == 200 and re.search("Success", response[1]) == None:
 		logEvent("Failed Post:" + response[1] + ":" + str(data["instant_override"]))
 	return(queuedLogsCnt)
-def readData(allSums, allCnts, ser, testMode, sensorVars):
+def readData(allSums, allCnts, ser, testMode, sensorVars, harmonic = False):
 	tempVals = vars2pass(True, testMode)
 	data = vars2pass(False, testMode)
 	if testMode != "Y": ardVal = readArduino(ser)
@@ -149,9 +157,14 @@ def readData(allSums, allCnts, ser, testMode, sensorVars):
 		logEvent("Error: chk_sum does not match:" + str(ardVal))
 	else:
 		for var in sensorVars:
-			allSums[var] = allSums[var] + tempVals[var]
-			allCnts[var] = allCnts[var] + 1
-			data[var] = round(allSums[var]/allCnts[var],1)
+			allCnts[var] = allCnts[var] + 1.0
+			if harmonic != True:
+				allSums[var] = allSums[var] + tempVals[var]
+				data[var] = round(allSums[var]/allCnts[var],1)
+			else:
+				allSums[var] = allSums[var] + 1.0/tempVals[var]
+				data[var] = round(allCnts[var]/allSums[var],1)
+
 		log2computer("Logs\READ VALUES.csv", [-1,"NONE"], tempVals, sensorVars)
 	return([data, allSums, allCnts])
 def evntListener(testMode):
