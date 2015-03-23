@@ -33,6 +33,13 @@ send2middleware("r=light_beer")	= ('Fail', 'light_beer is not valid.')
 send2middleware("r=")		= ('Fail', ' is not valid.')
 
 ----------------------------------------------------------------
+
+O=var_name - Turns off data collection and logging
+
+send2middleware("O")	= ('Success', 'temp_amb:75.8')
+
+
+----------------------------------------------------------------
 !!DEFUNCT!!
 C - Turns off server permanently, will require access to the server to turn it back on
 

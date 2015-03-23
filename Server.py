@@ -17,24 +17,26 @@ import re
 import requests
 import sys
 
-def chkArduino(minLog, testMode, ser):
-	sensorVars = [x for x in vars2pass(True)]
+def chkArduino():
+	minLog, testMode, ser = initialize()
+	
+	sensorVars = [x for x in vars2pass(True, testMode)]
 	sensorVars.sort()
 	fileName = genCompLog("Logs\SENSOR LOG " + str(datetime.datetime.now().strftime("%Y%m%d_%H%M")) + ".csv", sensorVars)
 	#Initialize vars
 	lastLogAttempt = time.time()-60*minLog - 1
-	allSums = vars2pass(True)
-	allCnts = vars2pass(True)
-	tempVals = vars2pass(True)
-	data = vars2pass(False)
+	allSums = vars2pass(True, testMode)
+	allCnts = vars2pass(True, testMode)
+	data = vars2pass(False, testMode)
 	
 	logEvent("Starting:minLog=" + str(minLog) + ":testMode=" + testMode + ":fileName=" + fileName)
 	
 	forceLog = "N"
-	queuedLogs = "Logs\QUEUED LOGS.csv"
-	try: queuedLogsCnt = sum(1 for row in csv.reader(open(queuedLogs))) - 1
+	loggingOn = "Y"
+
+	try: queuedLogsCnt = sum(1 for row in csv.reader(open("Logs\QUEUED LOGS.csv"))) - 1
 	except:
-		genCompLog(queuedLogs, sensorVars)
+		genCompLog("Logs\QUEUED LOGS.csv", sensorVars)
 		queuedLogsCnt = 0
 	try: open("Logs\FAILED QUEUES.csv")
 	except: genCompLog("Logs\FAILED QUEUES.csv", sensorVars)
@@ -46,27 +48,38 @@ def chkArduino(minLog, testMode, ser):
 	while True:
 		currTime = time.time()
 		
-		evnt,val,con = evntListener()
+		evnt,val,con = evntListener(testMode)
 		rr = None
-		
 		if evnt == "R":
 			if val == None: rr = ("Success", "Current values:" + str(data))
 			elif val.upper() in [x.upper() for x in sensorVars]: rr = ("Success", str(val) + ":" + str(data[val]))
 			else: rr = ("Fail", str(val) + " is not valid.")
+		elif evnt == "O":
+			if loggingOn == "Y": rr = ("Success", "Data collection off.")
+			else: rr = ("Fail", "Data collection was already off.")
+			loggingOn = "N"
+		elif evnt == "L":
+			if loggingOn == "N": rr = ("Success", "Data collection on.")
+			else: rr = ("Fail", "Data collection was already on.")
+			loggingOn = "Y"
 		elif evnt == "F":
-			forceLog = "Y"
-			rr = ("Success", "Forcing log...")
+			if loggingOn == "Y":
+				forceLog = "Y"
+				rr = ("Success", "Forcing log...")
+			else: rr = ("Fail", "Logging must be on to fource log.")
 		elif evnt == "M":
-			if (val == None or val == "") and con != None: rr = ("Fail", "Number needed. minLog=" + str(minLog))
-			else:
-				if val == None and con == None: newVal = input("Current log time is " + str(minLog) + ". Enter new value: ")
-				else: newVal = val
-				try:
-					if newVal != "":
-						minLog = int(newVal)
-						rr = ("Success", "Changed now minLog=" + str(minLog))
-					else: rr = ("Success", "Not changed from minLog=" + str(minLog))
-				except ValueError: rr = ("Fail", "Please enter a number. minLog=" + str(minLog))
+			if loggingOn == "Y":
+				if (val == None or val == "") and con != None: rr = ("Fail", "Number needed. minLog=" + str(minLog))
+				else:
+					if val == None and con == None: newVal = input("Current log time is " + str(minLog) + ". Enter new value: ")
+					else: newVal = val
+					try:
+						if newVal != "":
+							minLog = int(newVal)
+							rr = ("Success", "Changed now minLog=" + str(minLog))
+						else: rr = ("Success", "Not changed from minLog=" + str(minLog))
+					except ValueError: rr = ("Fail", "Please enter a number. minLog=" + str(minLog))
+			else: rr = ("Fail", "Logging must be on to change frequency.")
 		elif evnt != None: rr = ("Fail", "Command does not exist:" + str(evnt))
 		#elif evnt == "C": rr = ("Success", "Cancelled.")
 		
@@ -76,81 +89,86 @@ def chkArduino(minLog, testMode, ser):
 			finally: con.close()
 		if rr != None:
 			logEvent(rr[1])
-			#Final notes:
-			if evnt != "F": print("Reading...")
+			if evnt != "F" and loggingOn == "Y": print("Reading...")
 			#elif evnt == "C": break
 			
-
-		#Reading and aggregate
-		if testMode != "Y": readValue = readArduino(ser)
-		else: readValue = "{'chk_sum':96.80, 'light_amb':21,.00 'temp_amb':75.80}"
-
-		for var in sensorVars:
-			readVal = readJSON(var, readValue)
-			if readVal != None:
-				#if var.split("_")[0].upper() == "TEMP" and readVal > 80:
-				#	logEvent("Large temp reading:" + readValue)
-				tempVals[var] = readVal
-		
-		try:
-			chk_sum = int(readJSON("chk_sum", readValue))
-			r_chk_sum = int(sum([tempVals[n] for n in tempVals]))
-		except:
-			chk_sum = None
-			r_chk_sum = None
-		
-		if chk_sum == None or r_chk_sum == None or chk_sum != r_chk_sum:
-			logEvent("Error: chk_sum does not match:" + str(readValue))
-		else:
-			for var in sensorVars:
-				allSums[var] = allSums[var] + tempVals[var]
-				allCnts[var] = allCnts[var] + 1
-				data[var] = round(allSums[var]/allCnts[var],1)
-			log2computer("Logs\READ VALUES.csv", [-1,"NONE"], tempVals, sensorVars)
-			
-	
-			
-		#Logging
-		if currTime > (lastLogAttempt + 60*minLog) or forceLog == "Y":
-			genCompLog("Logs\READ VALUES.csv", sensorVars)
-			data["instant_override"] = int(round(datetime.datetime.now().timestamp(),0))
-			
-			response = logValues2django(data)
-			log2computer(fileName, response, data, sensorVars)
-			
-			print(str(datetime.datetime.fromtimestamp(data["instant_override"]).strftime('%Y-%m-%d %H:%M:%S')) + "\t" + response[1])
-			
-			#Log failed attempts for later upload
-			if  response[0] != 200:
-				log2computer(queuedLogs, response, data, sensorVars)
-				queuedLogsCnt += 1
-				logEvent("Failed Upload:" + str(response[0]) + ":" + response[1] + ":" + str(data["instant_override"]))
-			elif queuedLogsCnt > 0:
-				logEvent("Attempting to upload queued files...")
-				queuedLogsCnt = postQueued(queuedLogs, sensorVars)
-			if response[0] == 200 and re.search("Success", response[1]) == None: logEvent("Failed Post:" + response[1] + ":" + str(data["instant_override"]))
+		if loggingOn == "Y":
+			#Reading and aggregate
+			data, allSums, allCnts = readData(allSums, allCnts, ser, testMode, sensorVars)
 				
-			#Reset
-			lastLogAttempt = currTime
-			allSums = vars2pass(True)
-			allCnts = vars2pass(True)
-			tempVals = vars2pass(True)
-			forceLog = "N"
-def evntListener():
+			#Logging
+			if currTime > (lastLogAttempt + 60*minLog) or forceLog == "Y":
+				queuedLogsCnt = logData(queuedLogsCnt, data, fileName, sensorVars, testMode)
+					
+				#Reset
+				lastLogAttempt = currTime
+				allSums = vars2pass(True, testMode)
+				allCnts = vars2pass(True, testMode)
+				forceLog = "N"
+def logData(queuedLogsCnt, data, fileName, sensorVars, testMode):
+	genCompLog("Logs\READ VALUES.csv", sensorVars)
+	data["instant_override"] = int(round(datetime.datetime.now().timestamp(),0))
+	
+	response = logValues2django(data)
+	log2computer(fileName, response, data, sensorVars)
+	
+	print(str(datetime.datetime.fromtimestamp(data["instant_override"]).strftime('%Y-%m-%d %H:%M:%S')) + "\t" + response[1])
+	
+	#Log failed attempts for later upload
+	if  response[0] != 200:
+		log2computer("Logs\QUEUED LOGS.csv", response, data, sensorVars)
+		queuedLogsCnt += 1
+		logEvent("Failed Upload:" + str(response[0]) + ":" + response[1] + ":" + str(data["instant_override"]))
+	elif queuedLogsCnt > 0:
+		logEvent("Attempting to upload queued files...")
+		queuedLogsCnt = postQueued("Logs\QUEUED LOGS.csv", sensorVars, testMode)
+	if response[0] == 200 and re.search("Success", response[1]) == None:
+		logEvent("Failed Post:" + response[1] + ":" + str(data["instant_override"]))
+	return(queuedLogsCnt)
+def readData(allSums, allCnts, ser, testMode, sensorVars):
+	tempVals = vars2pass(True, testMode)
+	data = vars2pass(False, testMode)
+	if testMode != "Y": ardVal = readArduino(ser)
+	else: ardVal = "{'chk_sum':96.80, 'light_amb':21,.00 'temp_amb':75.80}"
+
+	for var in sensorVars:
+		readVal = readJSON(var, ardVal)
+		if readVal != None:
+			#if var.split("_")[0].upper() == "TEMP" and readVal > 80:
+			#	logEvent("Large temp reading:" + ardVal)
+			tempVals[var] = readVal
+	
+	try:
+		chk_sum = int(readJSON("chk_sum", ardVal))
+		r_chk_sum = int(sum([tempVals[n] for n in tempVals]))
+	except:
+		chk_sum = None
+		r_chk_sum = None
+	
+	if chk_sum == None or r_chk_sum == None or chk_sum != r_chk_sum:
+		logEvent("Error: chk_sum does not match:" + str(ardVal))
+	else:
+		for var in sensorVars:
+			allSums[var] = allSums[var] + tempVals[var]
+			allCnts[var] = allCnts[var] + 1
+			data[var] = round(allSums[var]/allCnts[var],1)
+		log2computer("Logs\READ VALUES.csv", [-1,"NONE"], tempVals, sensorVars)
+	return([data, allSums, allCnts])
+def evntListener(testMode):
 	#Input status (code location) so that can be sent back to server if asked
 	if msvcrt.kbhit() == 1:
 		try: out = msvcrt.getch().decode().upper()
 		except: out = (None, None, None)
 		return((out, None, None))
 	else:
-		r, val, con = socketListener(1)
+		r, val, con = socketListener(1, testMode)
 		if r == "Success":
 			logEvent("Remote request:" + str(val))
 			s = val.split("=")
 			if len(s) > 1: return(s[0].upper(),s[1], con)
 			else: return((val.upper(),None, con))
 		else: return((None, None, None))
-def socketListener(timeout):
+def socketListener(timeout, testMode):
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	if testMode != "Y":
 		server_ip = socket.gethostbyname(socket.gethostname())
@@ -171,20 +189,20 @@ def socketListener(timeout):
 		connection.close()
 		return(("No data", None, None))
 	return(("Unknown", None, None))
-def postQueued(file, sensorVars):
+def postQueued(file, sensorVars, testMode):
 	f = open(file)
 	vals = [row for row in csv.reader(f)]
 	f.close()
 	genCompLog(file, sensorVars)
 	header = [x.lower() for x in vals[0]]
 	
-	columns = vars2pass(True)
+	columns = vars2pass(True, testMode)
 	for var in columns: columns[var] = header.index(var)
 	columns["instant_override"] = header.index("instant_override")
 	
 	for r in range(1, len(vals)):
 		row = vals[r]
-		data = vars2pass(False)
+		data = vars2pass(False, testMode)
 		for var in sensorVars: data[var] = row[columns[var]]
 		data["instant_override"] = int(row[columns["instant_override"]])
 		
@@ -232,7 +250,7 @@ def logEvent(msg):
 	msg = str(msg).replace('\n', ' ').replace('\r', '').replace('\t', '    ')
 	msg = str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + "\tLogged: " + msg
 	print(msg)
-def vars2pass(sensorVarsOnly):
+def vars2pass(sensorVarsOnly, testMode):
 	if sensorVarsOnly == None: sensorVarsOnly = False
 	if testMode == "Y": key = "test"
 	else: key = "beer"
@@ -255,30 +273,31 @@ def vars2pass(sensorVarsOnly):
 		out.update(sensorVars)
 	return(out)
 
-#Defaults
-minLog = 15 #Number of minutes between logs to Django (data under this is aggregated)
-testMode = None
-comPort = None
-
-#Get arguments:
-if len(sys.argv) > 1:
-	for a in sys.argv:
-		arg = a.split("=")
-		if len(arg) > 1:
-			if(arg[0].upper() == "MINLOG"): minLog = int(arg[1])
-			if(arg[0].upper() == "COMPORT"): comPort = int(arg[1])
-			if(arg[0].upper() == "TESTMODE"): testMode = arg[1].upper()
-
-if comPort != None: testMode = "N"
-if testMode == None: testMode = input("Test mode? (Y/N) ").upper()
-if testMode != "Y":
-	if comPort == None: comPort = input("Enter COM port: ").upper()
-	comPort = "COM" + str(comPort)
-	ser = serial.Serial(comPort, 9600, timeout = 1)
+def initialize():
+	minLog = 15 #Number of minutes between logs to Django (data under this is aggregated)
+	testMode = None
+	comPort = None
 	
-	ser.flushInput()
-	ser.write(b'E')
-	ser.readline()
-else: ser = None
+	#Get arguments:
+	if len(sys.argv) > 1:
+		for a in sys.argv:
+			arg = a.split("=")
+			if len(arg) > 1:
+				if(arg[0].upper() == "MINLOG"): minLog = int(arg[1])
+				if(arg[0].upper() == "COMPORT"): comPort = int(arg[1])
+				if(arg[0].upper() == "TESTMODE"): testMode = arg[1].upper()
+	
+	if comPort != None: testMode = "N"
+	if testMode == None: testMode = input("Test mode? (Y/N) ").upper()
+	if testMode != "Y":
+		if comPort == None: comPort = input("Enter COM port: ").upper()
+		comPort = "COM" + str(comPort)
+		ser = serial.Serial(comPort, 9600, timeout = 1)
+		
+		ser.flushInput()
+		ser.write(b'E')
+		ser.readline()
+	else: ser = None
+	return([minLog, testMode, ser])
 
-chkArduino(minLog, testMode, ser)
+chkArduino()
