@@ -77,7 +77,7 @@ def chkArduino():
 			else: rr = ("Fail", "Must be on to force log.")
 		elif evnt == "M":
 			if loggingOn == "Y":
-				if (val == None or val == "") and con != None: rr = ("Fail", "Number needed. minLog=" + str(minLog))
+				if (val == None or val == "") and con != None: rr = ("Success", "Log frequency=" + str(minLog))
 				else:
 					if val == None and con == None: newVal = input("Current log time is " + str(minLog) + ". Enter new value: ")
 					else: newVal = val
