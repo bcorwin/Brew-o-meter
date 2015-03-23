@@ -24,6 +24,7 @@ def chkArduino():
 	sensorVars.sort()
 	fileName = genCompLog("Logs\SENSOR LOG " + str(datetime.datetime.now().strftime("%Y%m%d_%H%M")) + ".csv", sensorVars)
 	fileName_h = genCompLog(re.sub(".csv", "_h.csv", fileName), sensorVars)
+	fileName_s = genCompLog(re.sub(".csv", "_s.csv", fileName), sensorVars)
 	#Initialize vars
 	lastLogAttempt = time.time()-60*minLog - 1
 	allSums = vars2pass(True, testMode)
@@ -32,6 +33,9 @@ def chkArduino():
 	allSums_h = vars2pass(True, testMode)
 	allCnts_h = vars2pass(True, testMode)
 	data_h = vars2pass(False, testMode)
+	allSums_s = vars2pass(True, testMode)
+	allCnts_s = vars2pass(True, testMode)
+	data_s = vars2pass(False, testMode)
 	
 	logEvent("Starting:minLog=" + str(minLog) + ":testMode=" + testMode + ":fileName=" + fileName)
 	
@@ -99,12 +103,14 @@ def chkArduino():
 		if loggingOn == "Y":
 			#Reading and aggregate
 			data, allSums, allCnts = readData(allSums, allCnts, ser, testMode, sensorVars)
-			data_h, allSums_h, allCnts_h = readData(allSums_h, allCnts_h, ser, testMode, sensorVars)
+			data_h, allSums_h, allCnts_h = readData(allSums_h, allCnts_h, ser, testMode, sensorVars, method = "H")
+			data_s, allSums_s, allCnts_s = readData(allSums_s, allCnts_s, ser, testMode, sensorVars, method = "S")
 				
 			#Logging
 			if currTime > (lastLogAttempt + 60*minLog) or forceLog == "Y":
 				queuedLogsCnt = logData(queuedLogsCnt, data, fileName, sensorVars, testMode)
 				log2computer(fileName_h, [-1,"NONE"], data_h, sensorVars)
+				log2computer(fileName_s, [-1,"NONE"], data_s, sensorVars)
 					
 				#Reset
 				lastLogAttempt = currTime
@@ -133,7 +139,7 @@ def logData(queuedLogsCnt, data, fileName, sensorVars, testMode):
 	if response[0] == 200 and re.search("Success", response[1]) == None:
 		logEvent("Failed Post:" + response[1] + ":" + str(data["instant_override"]))
 	return(queuedLogsCnt)
-def readData(allSums, allCnts, ser, testMode, sensorVars, harmonic = False):
+def readData(allSums, allCnts, ser, testMode, sensorVars, method = "A"):
 	tempVals = vars2pass(True, testMode)
 	data = vars2pass(False, testMode)
 	if testMode != "Y": ardVal = readArduino(ser)
@@ -158,12 +164,17 @@ def readData(allSums, allCnts, ser, testMode, sensorVars, harmonic = False):
 	else:
 		for var in sensorVars:
 			allCnts[var] = allCnts[var] + 1.0
-			if harmonic != True:
+			if method == "A":
 				allSums[var] = allSums[var] + tempVals[var]
 				data[var] = round(allSums[var]/allCnts[var],1)
-			else:
-				allSums[var] = allSums[var] + 1.0/tempVals[var]
-				data[var] = round(allCnts[var]/allSums[var],1)
+			elif method == "H":
+				try: allSums[var] = allSums[var] + 1.0/tempVals[var]
+				except: allSums[var] = allSums[var] + 0.0
+				try: data[var] = round(allCnts[var]/allSums[var],1)
+				except: data[var] = 0.0
+			elif method == "S":
+				allSums[var] = allSums[var] + tempVals[var]
+				data[var] = round(tempVals[var],1)
 
 		log2computer("Logs\READ VALUES.csv", [-1,"NONE"], tempVals, sensorVars)
 	return([data, allSums, allCnts])
