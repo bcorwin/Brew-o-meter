@@ -23,19 +23,11 @@ def chkArduino():
 	sensorVars = [x for x in vars2pass(True, testMode)]
 	sensorVars.sort()
 	fileName = genCompLog("Logs\SENSOR LOG " + str(datetime.datetime.now().strftime("%Y%m%d_%H%M")) + ".csv", sensorVars)
-	fileName_h = genCompLog(re.sub(".csv", "_h.csv", fileName), sensorVars)
-	fileName_s = genCompLog(re.sub(".csv", "_s.csv", fileName), sensorVars)
 	#Initialize vars
 	lastLogAttempt = time.time()-60*minLog - 1
 	allSums = vars2pass(True, testMode)
 	allCnts = vars2pass(True, testMode)
 	data = vars2pass(False, testMode)
-	allSums_h = vars2pass(True, testMode)
-	allCnts_h = vars2pass(True, testMode)
-	data_h = vars2pass(False, testMode)
-	allSums_s = vars2pass(True, testMode)
-	allCnts_s = vars2pass(True, testMode)
-	data_s = vars2pass(False, testMode)
 	
 	logEvent("Starting:minLog=" + str(minLog) + ":testMode=" + str(testMode) + ":fileName=" + fileName)
 	
@@ -112,22 +104,20 @@ def chkArduino():
 		if collectionOn == True:
 			#Reading and aggregate
 			data, allSums, allCnts = readData(allSums, allCnts, ser, testMode, sensorVars)
-			data_h, allSums_h, allCnts_h = readData(allSums_h, allCnts_h, ser, testMode, sensorVars, method = "H")
-			data_s, allSums_s, allCnts_s = readData(allSums_s, allCnts_s, ser, testMode, sensorVars, method = "S")
 				
 			#Logging
 			if currTime > (lastLogAttempt + 60*minLog) or forceLog == True:
 				queuedLogsCnt = logData(queuedLogsCnt, data, fileName, sensorVars, testMode, loggingOn)
-				log2computer(fileName_h, [-1,"NONE"], data_h, sensorVars)
-				log2computer(fileName_s, [-1,"NONE"], data_s, sensorVars)
 					
 				#Reset
 				lastLogAttempt = currTime
 				allSums = vars2pass(True, testMode)
 				allCnts = vars2pass(True, testMode)
-				allSums_h = vars2pass(True, testMode)
-				allCnts_h = vars2pass(True, testMode)
 				forceLog = False
+		else:
+			allSums = vars2pass(True, testMode)
+			allCnts = vars2pass(True, testMode)
+			data = vars2pass(False, testMode)
 def logData(queuedLogsCnt, data, fileName, sensorVars, testMode, loggingOn):
 	genCompLog("Logs\READ VALUES.csv", sensorVars)
 	data["instant_override"] = int(round(datetime.datetime.now().timestamp(),0))
