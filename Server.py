@@ -1,8 +1,8 @@
 #Arguments:
 ##minLog
 ##comPort (do not need testMode if this is declared)
-##testMode (Y/N)
-###Examples: python Server.py minLog=15 comPort=3, python Server.py testMode=Y
+##testMode (True/False)
+###Examples: python Server.py minLog=15 comPort=3, python Server.py testMode=True
 ###No spaces around the =
 
 #Keys: temp_beer, light_amb, temp_amb, key = "beer", instant_override (time stamp)
@@ -37,10 +37,11 @@ def chkArduino():
 	allCnts_s = vars2pass(True, testMode)
 	data_s = vars2pass(False, testMode)
 	
-	logEvent("Starting:minLog=" + str(minLog) + ":testMode=" + testMode + ":fileName=" + fileName)
+	logEvent("Starting:minLog=" + str(minLog) + ":testMode=" + str(testMode) + ":fileName=" + fileName)
 	
-	forceLog = "N"
-	loggingOn = "Y"
+	forceLog = False
+	collectionOn = True
+	loggingOn = True
 
 	try: queuedLogsCnt = sum(1 for row in csv.reader(open("Logs\QUEUED LOGS.csv"))) - 1
 	except:
@@ -63,20 +64,28 @@ def chkArduino():
 			elif val.upper() in [x.upper() for x in sensorVars]: rr = ("Success", str(val) + ":" + str(data[val]))
 			else: rr = ("Fail", str(val) + " is not valid.")
 		elif evnt == "O":
-			if loggingOn == "Y": rr = ("Success", "Data collection off.")
+			if collectionOn == True: rr = ("Success", "Data collection off.")
 			else: rr = ("Fail", "Was already off.")
-			loggingOn = "N"
+			collectionOn = False
 		elif evnt == "L":
-			if loggingOn == "N": rr = ("Success", "Data collection on.")
+			if collectionOn == False: rr = ("Success", "Data collection on.")
 			else: rr = ("Fail", "Was already on.")
-			loggingOn = "Y"
+			collectionOn = True
+		elif evnt == "E":
+			if loggingOn == True: rr = ("Success", "Remote logging off.")
+			else: rr = ("Fail", "Remote logging was already off.")
+			loggingOn = False
+		elif evnt == "D":
+			if loggingOn == False: rr = ("Success", "Remote logging on.")
+			else: rr = ("Fail", "Remote logging was already on.")
+			loggingOn = True
 		elif evnt == "F":
-			if loggingOn == "Y":
-				forceLog = "Y"
+			if collectionOn == True:
+				forceLog = True
 				rr = ("Success", "Forcing log...")
 			else: rr = ("Fail", "Must be on to force log.")
 		elif evnt == "M":
-			if loggingOn == "Y":
+			if collectionOn == True:
 				if (val == None or val == "") and con != None: rr = ("Success", "Log frequency=" + str(minLog))
 				else:
 					if val == None and con == None: newVal = input("Current log time is " + str(minLog) + ". Enter new value: ")
@@ -97,18 +106,18 @@ def chkArduino():
 			finally: con.close()
 		if rr != None:
 			logEvent(rr[1])
-			if evnt != "F" and loggingOn == "Y": print("Reading...")
+			if evnt != "F" and collectionOn == True: print("Reading...")
 			#elif evnt == "C": break
 			
-		if loggingOn == "Y":
+		if collectionOn == True:
 			#Reading and aggregate
 			data, allSums, allCnts = readData(allSums, allCnts, ser, testMode, sensorVars)
 			data_h, allSums_h, allCnts_h = readData(allSums_h, allCnts_h, ser, testMode, sensorVars, method = "H")
 			data_s, allSums_s, allCnts_s = readData(allSums_s, allCnts_s, ser, testMode, sensorVars, method = "S")
 				
 			#Logging
-			if currTime > (lastLogAttempt + 60*minLog) or forceLog == "Y":
-				queuedLogsCnt = logData(queuedLogsCnt, data, fileName, sensorVars, testMode)
+			if currTime > (lastLogAttempt + 60*minLog) or forceLog == True:
+				queuedLogsCnt = logData(queuedLogsCnt, data, fileName, sensorVars, testMode, loggingOn)
 				log2computer(fileName_h, [-1,"NONE"], data_h, sensorVars)
 				log2computer(fileName_s, [-1,"NONE"], data_s, sensorVars)
 					
@@ -118,12 +127,14 @@ def chkArduino():
 				allCnts = vars2pass(True, testMode)
 				allSums_h = vars2pass(True, testMode)
 				allCnts_h = vars2pass(True, testMode)
-				forceLog = "N"
-def logData(queuedLogsCnt, data, fileName, sensorVars, testMode):
+				forceLog = False
+def logData(queuedLogsCnt, data, fileName, sensorVars, testMode, loggingOn):
 	genCompLog("Logs\READ VALUES.csv", sensorVars)
 	data["instant_override"] = int(round(datetime.datetime.now().timestamp(),0))
 	
-	response = logValues2django(data)
+	if loggingOn == True: response = logValues2django(data)
+	else: response = (-100, "Not posted: Remote logging turned off")
+	
 	log2computer(fileName, response, data, sensorVars)
 	
 	print(str(datetime.datetime.fromtimestamp(data["instant_override"]).strftime('%Y-%m-%d %H:%M:%S')) + "\t" + response[1])
@@ -132,7 +143,7 @@ def logData(queuedLogsCnt, data, fileName, sensorVars, testMode):
 	if  response[0] != 200:
 		log2computer("Logs\QUEUED LOGS.csv", response, data, sensorVars)
 		queuedLogsCnt += 1
-		logEvent("Failed Upload:" + str(response[0]) + ":" + response[1] + ":" + str(data["instant_override"]))
+		if loggingOn == True: logEvent("Failed Upload:" + str(response[0]) + ":" + response[1] + ":" + str(data["instant_override"]))
 	elif queuedLogsCnt > 0:
 		logEvent("Attempting to upload queued files...")
 		queuedLogsCnt = postQueued("Logs\QUEUED LOGS.csv", sensorVars, testMode)
@@ -142,7 +153,7 @@ def logData(queuedLogsCnt, data, fileName, sensorVars, testMode):
 def readData(allSums, allCnts, ser, testMode, sensorVars, method = "A"):
 	tempVals = vars2pass(True, testMode)
 	data = vars2pass(False, testMode)
-	if testMode != "Y": ardVal = readArduino(ser)
+	if testMode != True: ardVal = readArduino(ser)
 	else: ardVal = "{'chk_sum':96.80, 'light_amb':21,.00 'temp_amb':75.80}"
 
 	for var in sensorVars:
@@ -194,7 +205,7 @@ def evntListener(testMode):
 		else: return((None, None, None))
 def socketListener(timeout, testMode):
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	if testMode != "Y":
+	if testMode != True:
 		server_ip = socket.gethostbyname(socket.gethostname())
 		server_address = (server_ip, 6005)
 	else: server_address = ('localhost', 6005)
@@ -277,7 +288,7 @@ def logEvent(msg):
 	print(msg)
 def vars2pass(sensorVarsOnly, testMode):
 	if sensorVarsOnly == None: sensorVarsOnly = False
-	if testMode == "Y": key = "test"
+	if testMode == True: key = "test"
 	else: key = "beer"
 
 	otherVars = {
@@ -309,11 +320,11 @@ def initialize():
 			if len(arg) > 1:
 				if(arg[0].upper() == "MINLOG"): minLog = int(arg[1])
 				if(arg[0].upper() == "COMPORT"): comPort = int(arg[1])
-				if(arg[0].upper() == "TESTMODE"): testMode = arg[1].upper()
+				if(arg[0].upper() == "TESTMODE"): testMode = arg[1].upper() == "TRUE"
 	
-	if comPort != None: testMode = "N"
-	if testMode == None: testMode = input("Test mode? (Y/N) ").upper()
-	if testMode != "Y":
+	if comPort != None: testMode = False
+	if testMode == None: testMode = input("Test mode? (True/False) ").upper()
+	if testMode != True:
 		if comPort == None: comPort = input("Enter COM port: ").upper()
 		comPort = "COM" + str(comPort)
 		ser = serial.Serial(comPort, 9600, timeout = 1)
