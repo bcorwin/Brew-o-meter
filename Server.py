@@ -317,10 +317,12 @@ def initialize():
 			if len(arg) > 1:
 				if(arg[0].upper() == "MINLOG"): minLog = int(arg[1])
 				if(arg[0].upper() == "COMPORT"): comPort = int(arg[1])
-				if(arg[0].upper() == "TESTMODE"): testMode = arg[1].upper() == "TRUE"
+				if(arg[0].upper() == "TESTMODE"): testMode = arg[1].upper()
 	
 	if comPort != None: testMode = False
-	if testMode == None: testMode = input("Test mode? (True/False) ").upper()
+	if testMode == None: testMode = input("Test mode? (Yes/No) ").upper()
+	if testMode[0] in ("T", "Y"): testMode = True
+	else: testMode = False
 	if testMode != True:
 		if comPort == None: comPort = input("Enter COM port: ").upper()
 		comPort = "COM" + str(comPort)
