@@ -8,7 +8,7 @@
 #Keys: temp_beer, light_amb, temp_amb, key = "beer", instant_override (time stamp)
 
 import socket
-import datetime
+from datetime import datetime
 import time
 import serial
 import msvcrt
@@ -16,13 +16,14 @@ import csv
 import re
 import requests
 import sys
+from dateutil import tz
 
 def chkArduino():
 	minLog, testMode, ser = initialize()
 	
 	sensorVars = [x for x in vars2pass(True, testMode)]
 	sensorVars.sort()
-	fileName = genCompLog("Logs\SENSOR LOG " + str(datetime.datetime.now().strftime("%Y%m%d_%H%M")) + ".csv", sensorVars)
+	fileName = genCompLog("Logs\SENSOR LOG " + str(datetime.now().strftime("%Y%m%d_%H%M")) + ".csv", sensorVars)
 	#Initialize vars
 	lastLogAttempt = time.time()-60*minLog - 1
 	allSums = vars2pass(True, testMode)
@@ -120,14 +121,14 @@ def chkArduino():
 			data = vars2pass(False, testMode)
 def logData(queuedLogsCnt, data, fileName, sensorVars, testMode, loggingOn):
 	genCompLog("Logs\READ VALUES.csv", sensorVars)
-	data["instant_override"] = int(round(datetime.datetime.now().timestamp(),0))
+	data["instant_override"] = get_instant_override()
 	
 	if loggingOn == True: response = logValues2django(data)
 	else: response = (-100, "Not posted: Remote logging turned off")
 	
 	log2computer(fileName, response, data, sensorVars)
 	
-	print(str(datetime.datetime.fromtimestamp(data["instant_override"]).strftime('%Y-%m-%d %H:%M:%S')) + "\t" + response[1])
+	print(str(get_from_timestamp(data["instant_override"])) + "\t" + response[1])
 	
 	#Log failed attempts for later upload
 	if  response[0] != 200:
@@ -262,10 +263,10 @@ def genCompLog(fileName, sensorVars):
 	return fileName
 def log2computer(fileName, response, vals, sensorVars):
 	if "instant_override" not in vals or vals["instant_override"] == 0:
-		timestamp = int(round(datetime.datetime.now().timestamp(),0))
+		timestamp = get_instant_override()
 	else: timestamp = vals["instant_override"]
 	
-	addRow  = str(datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')) + "," + str(timestamp) + ","
+	addRow  = str(get_from_timestamp(timestamp)) + "," + str(timestamp) + ","
 	addRow += str(response[0]) + "," + response[1]
 	for var in sensorVars: addRow += "," + str(vals[var])
 	
@@ -274,7 +275,7 @@ def log2computer(fileName, response, vals, sensorVars):
 	fd.close()
 def logEvent(msg):
 	msg = str(msg).replace('\n', ' ').replace('\r', '').replace('\t', '    ')
-	msg = str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + "\tLogged: " + msg
+	msg = str(datetime.now().strftime("%Y-%m-%d %H:%M:%S")) + "\tLogged: " + msg
 	print(msg)
 def vars2pass(sensorVarsOnly, testMode):
 	if sensorVarsOnly == None: sensorVarsOnly = False
@@ -298,6 +299,12 @@ def vars2pass(sensorVarsOnly, testMode):
 		out = otherVars.copy()
 		out.update(sensorVars)
 	return(out)
+def get_instant_override():
+    return int(round(datetime.utcnow().timestamp(),0))
+def get_from_timestamp(timestamp):
+    utc = datetime.fromtimestamp(timestamp).replace(tzinfo=tz.tzutc())
+    local = utc.astimezone(tz.tzlocal())
+    return local.strftime('%Y-%m-%d %H:%M:%S')
 def initialize():
 	minLog = 15 #Number of minutes between logs to Django (data under this is aggregated)
 	testMode = None
