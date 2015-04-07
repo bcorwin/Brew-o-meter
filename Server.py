@@ -300,10 +300,9 @@ def vars2pass(sensorVarsOnly, testMode):
 		out.update(sensorVars)
 	return(out)
 def get_instant_override():
-    return int(round(datetime.utcnow().timestamp(),0))
+    return int(round(datetime.now().timestamp(),0))
 def get_from_timestamp(timestamp):
-    utc = datetime.fromtimestamp(timestamp).replace(tzinfo=tz.tzutc())
-    local = utc.astimezone(tz.tzlocal())
+    local = datetime.fromtimestamp(timestamp)
     return local.strftime('%Y-%m-%d %H:%M:%S')
 def initialize():
 	minLog = 15 #Number of minutes between logs to Django (data under this is aggregated)
