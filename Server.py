@@ -320,8 +320,9 @@ def initialize():
 	
 	if comPort != None: testMode = False
 	if testMode == None: testMode = input("Test mode? (Yes/No) ").upper()
-	if testMode[0] in ("T", "Y"): testMode = True
-	else: testMode = False
+	elif testMode != False:
+		if testMode[0] in ("T", "Y"): testMode = True
+		else: testMode = False
 	if testMode != True:
 		if comPort == None: comPort = input("Enter COM port: ").upper()
 		comPort = "COM" + str(comPort)
