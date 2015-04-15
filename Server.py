@@ -96,7 +96,9 @@ def chkArduino():
                         in_max = alert_search.group(3)
                     else: rr = ("Fail", "Invalid format.")
                 if rr == None:
-                    if in_var == None: in_var = input("Set alert var:")
+                    if in_var == None:
+                        print("The current vars are " + str(sensorVars))
+                        in_var = input("Set alert var:")
                     
                     if in_var not in sensorVars and in_var != "off": rr = ("Fail", in_var + " is not a valid variable name.")
                     elif in_var != "off":
