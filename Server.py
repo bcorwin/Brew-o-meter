@@ -109,8 +109,8 @@ def chkArduino():
                     if in_var == None and con == None:
                         print("The current vars are " + str(sensorVars))
                         in_var = input("Set alert var:")
-                    if in_var not in sensorVars and in_var != "off": rr = ("Fail", in_var + " is not a valid variable name.")
-                    elif in_var != "off":
+                    if in_var not in sensorVars and in_var not in  ["off", "get"]: rr = ("Fail", in_var + " is not a valid variable name.")
+                    elif in_var not in ["off", "get"]:
                         alert_var = in_var
                         if con == None and (in_max == None or in_min == None):
                             in_min = input("Set alert lower bound:")
@@ -121,10 +121,11 @@ def chkArduino():
                             alert_rng = [min(in_min, in_max), max(in_min, in_max)]
                             rr = ("Success", "Alert for " + alert_var + " set to " + str(alert_rng))
                         except: rr = ("Fail", "Alert range not set for " + alert_var)
-                    else:
+                    elif in_var == "off":
                         alert_var = None
                         alert_rng = [None, None]
                         rr = ("Success", "Alerts turned off")
+                    elif in_var == "get": rr = ("Success", "Alert on for " + alert_var + str(alert_rng))
         elif evnt == "M":
             freq = readForm("freq", val)
             if collectionOn == True:
