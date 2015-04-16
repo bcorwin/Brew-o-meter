@@ -56,25 +56,38 @@ def chkArduino():
         evnt,val,con = evntListener(testMode)
         rr = None
         if evnt == "R":
-            if val == None: rr = ("Success", "Current values:" + str(data))
-            elif val.upper() in [x.upper() for x in sensorVars]: rr = ("Success", str(val) + ":" + str(data[val]))
-            else: rr = ("Fail", str(val) + " is not valid.")
-        elif evnt == "O":
-            if collectionOn == True: rr = ("Success", "Data collection off.")
-            else: rr = ("Fail", "Was already off.")
-            collectionOn = False
+            var = readForm("var", val)
+            if var == None: rr = ("Success", "Current values:" + str(data))
+            elif var in sensorVars: rr = ("Success", str(var) + ":" + str(data[var]))
+            else: rr = ("Fail", str(var) + " is not valid.")
+        elif evnt == "C":
+            dir = readForm("dir", val)
+            if dir == "off":
+                if collectionOn == True: rr = ("Success", "Data collection off.")
+                else: rr = ("Fail", "Was already off.")
+                collectionOn = False
+            elif dir == "on":
+                if collectionOn == False: rr = ("Success", "Data collection on.")
+                else: rr = ("Fail", "Was already on.")
+                collectionOn = True
+            else:
+                if dir == "toggle": collectionOn = not(collectionOn)
+                if collectionOn == True: rr = ("Success", "Data collection on.")
+                elif collectionOn == False: rr = ("Success", "Data collection off.")
         elif evnt == "L":
-            if collectionOn == False: rr = ("Success", "Data collection on.")
-            else: rr = ("Fail", "Was already on.")
-            collectionOn = True
-        elif evnt == "E":
-            if loggingOn == True: rr = ("Success", "Remote logging off.")
-            else: rr = ("Fail", "Remote logging was already off.")
-            loggingOn = False
-        elif evnt == "D":
-            if loggingOn == False: rr = ("Success", "Remote logging on.")
-            else: rr = ("Fail", "Remote logging was already on.")
-            loggingOn = True
+            dir = readForm("dir", val)
+            if dir == "off":
+                if loggingOn == True: rr = ("Success", "Remote logging off.")
+                else: rr = ("Fail", "Remote logging was already off.")
+                loggingOn = False
+            elif dir == "on":
+                if loggingOn == False: rr = ("Success", "Remote logging on.")
+                else: rr = ("Fail", "Remote logging was already on.")
+                loggingOn = True
+            else:
+                if dir == "toggle": loggingOn = not(loggingOn)
+                if loggingOn == True: rr = ("Success", "Remote logging on.")
+                elif loggingOn == False: rr = ("Success",  "Remote logging off.")
         elif evnt == "F":
             if collectionOn == True:
                 forceLog = True
@@ -87,19 +100,15 @@ def chkArduino():
             if collectionOn != True: rr = ("Fail", "Data collection must be on to set alerts.")
             else:
                 if con != None:
-                    if val != None:
-                        alert_search = re.search('(.*)\[(\d+), *(\d+)\]', val, re.IGNORECASE)
-                    else: alert_search = False
-                    if alert_search:
-                        in_var = alert_search.group(1)
-                        in_min = alert_search.group(2)
-                        in_max = alert_search.group(3)
-                    else: rr = ("Fail", "Invalid format.")
+                    try:
+                        in_var = readForm("var", val)
+                        in_min = readForm("min", val)
+                        in_max = readForm("max", val)
+                    except: rr = ("Fail", "Invalid format.")
                 if rr == None:
                     if in_var == None:
                         print("The current vars are " + str(sensorVars))
                         in_var = input("Set alert var:")
-                    
                     if in_var not in sensorVars and in_var != "off": rr = ("Fail", in_var + " is not a valid variable name.")
                     elif in_var != "off":
                         alert_var = in_var
@@ -117,11 +126,12 @@ def chkArduino():
                         alert_rng = [None, None]
                         rr = ("Success", "Alerts turned off")
         elif evnt == "M":
+            freq = readForm("freq", val)
             if collectionOn == True:
-                if (val == None or val == "") and con != None: rr = ("Success", "Log frequency=" + str(minLog))
+                if (freq == None or freq == "") and con != None: rr = ("Success", "Log frequency=" + str(minLog))
                 else:
-                    if val == None and con == None: newVal = input("Current log time is " + str(minLog) + ". Enter new value: ")
-                    else: newVal = val
+                    if freq == None and con == None: newVal = input("Current log time is " + str(minLog) + ". Enter new value: ")
+                    else: newVal = freq
                     try:
                         if newVal != "":
                             minLog = int(newVal)
@@ -229,9 +239,8 @@ def evntListener(testMode):
         r, val, con = socketListener(1, testMode)
         if r == "Success":
             logEvent("Remote request:" + str(val))
-            s = val.split("=")
-            if len(s) > 1: return(s[0].upper(),s[1], con)
-            else: return((val.upper(),None, con))
+            code = readForm("code", val).upper()
+            return(code,val, con)
         else: return((None, None, None))
 def socketListener(timeout, testMode):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -248,7 +257,7 @@ def socketListener(timeout, testMode):
     except: return(("Timeout", None, None))
     
     try:
-        data = connection.recv(32).decode()
+        data = connection.recv(64).decode()
         if data != "": return(("Success", data, connection))
     except:
         connection.close()
@@ -288,6 +297,14 @@ def readJSON(var, str):
     except:
         #logEvent("Bad reading.")
         out = None
+    return(out)
+def readForm(var, str):
+    pattern = var + "=([^&]*)(&|$)"
+    try:
+        out = re.search(pattern, str, re.IGNORECASE ).group(1)
+        try: out = float(out)
+        except: out = out.lower()
+    except: out = None
     return(out)
 def logValues2django(data):    
     try:
