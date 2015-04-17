@@ -312,7 +312,6 @@ def readForm(var, str):
 def logValues2django(data):    
     try:
         response = requests.post('https://cutreth.herokuapp.com/monitor/api/', data=data)
-        print(data)
         return[response.status_code, response.text    ]
     except:
         return[-1, "Unknown Error"]
