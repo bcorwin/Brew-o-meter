@@ -197,7 +197,7 @@ def readData(allSums, allCnts, ser, testMode, sensorVars, alert_var, alert_rng, 
     tempVals = vars2pass(True, testMode)
     data = vars2pass(False, testMode)
     if testMode != True: ardVal = readArduino(ser)
-    else: ardVal = "{'chk_sum':174.00, 'light_amb':21,.00, 'temp_amb':75.80, 'temp_beer':77.20}"
+    else: ardVal = "{'chk_sum':174.00, 'light_amb':21.00, 'temp_amb':75.80, 'temp_beer':77.20}"
 
     for var in sensorVars:
         readVal = readJSON(var, ardVal)
