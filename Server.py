@@ -112,7 +112,7 @@ def chkArduino():
                     if in_var not in sensorVars and in_var not in  ["off", "get"]: rr = ("Fail", str(in_var) + " is not a valid variable name.")
                     elif in_var not in ["off", "get"]:
                         alert_var = in_var
-                        if con == None and (in_max == None or in_min == None):
+                        if con == None and (in_max == "" or in_min == ""):
                             in_min = input("Set alert lower bound:")
                             in_max = input("Set alert upper bound:")
                         try:
