@@ -94,9 +94,9 @@ def chkArduino():
                 rr = ("Success", "Forcing log...")
             else: rr = ("Fail", "Must be on to force log.")
         elif evnt == "A":
-            in_var = None
-            in_min = None
-            in_max = None
+            in_var = ""
+            in_min = ""
+            in_max = ""
             if collectionOn != True: rr = ("Fail", "Data collection must be on to set alerts.")
             else:
                 if con != None:
