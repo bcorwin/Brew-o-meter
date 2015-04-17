@@ -125,7 +125,9 @@ def chkArduino():
                         alert_var = None
                         alert_rng = [None, None]
                         rr = ("Success", "Alerts turned off")
-                    elif in_var == "get": rr = ("Success", "Alert on for " + alert_var + str(alert_rng))
+                    elif in_var == "get":
+                        if alert_var != None: rr = ("Success", "Alert on for:" + alert_var + str(alert_rng))
+                        else: rr = ("Success", "Alerts off.")
         elif evnt == "M":
             freq = readForm("freq", val)
             if collectionOn == True:
