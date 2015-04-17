@@ -106,7 +106,7 @@ def chkArduino():
                         in_max = readForm("max", val)
                     except: rr = ("Fail", "Invalid format.")
                 if rr == None:
-                    if in_var == None and con == None:
+                    if in_var == "" and con == None:
                         print("The current vars are " + str(sensorVars))
                         in_var = input("Set alert var:")
                     if in_var not in sensorVars and in_var not in  ["off", "get"]: rr = ("Fail", str(in_var) + " is not a valid variable name.")
@@ -312,6 +312,7 @@ def readForm(var, str):
 def logValues2django(data):    
     try:
         response = requests.post('https://cutreth.herokuapp.com/monitor/api/', data=data)
+        print(data)
         return[response.status_code, response.text    ]
     except:
         return[-1, "Unknown Error"]
