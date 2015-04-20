@@ -16,7 +16,8 @@ import csv
 import re
 import requests
 import sys
-from win32api import SetSystemTime
+try: from win32api import SetSystemTime
+except: print("win32api not availabe so time sync command cannot be used")
 from dateutil import tz
 from winsound import PlaySound, SND_ALIAS
 
