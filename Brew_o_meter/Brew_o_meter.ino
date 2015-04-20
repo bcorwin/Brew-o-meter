@@ -2,15 +2,22 @@ int light = A1;
 int temp_amb = A0;
 int pres_beer = A3;
 int temp_beer = 10;
+int buzzer = 8;
 
 void setup() {
     digitalWrite(temp_beer, LOW);
     pinMode(temp_beer, INPUT);
+    pinMode(buzzer, OUTPUT);
     Serial.begin(9600);
 }
 
 void loop() {
   int req = Serial.read();
+  if(req == 66) {
+    tone(buzzer, 440);
+    delay(200);
+    tone(buzzer, 0 );
+  };
   if(req == 82) {    
     float light_val = analogRead(light);
     float temp_amb_val = 1.8*(analogRead(temp_amb)*5000.0/1024.0 - 500.0)/10.0 + 32.0;
