@@ -14,7 +14,7 @@ void setup() {
 void loop() {
   int req = Serial.read();
   if(req == 66) {
-    tone(buzzer, 440, 100);
+    tone(buzzer, 2048, 100);
   };
   if(req == 82) {    
     float light_val = analogRead(light);
