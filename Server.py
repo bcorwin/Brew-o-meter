@@ -119,7 +119,7 @@ def chkArduino():
                     except: rr = ("Fail", "Invalid format.")
                 if rr == None:
                     if in_var == "" and con == None:
-                        print("The current vars are " + str(sensorVars))
+                        print("The current vars are " + str(sensorVars) + ". Type 'off' to turn off.")
                         in_var = input("Set alert var:")
                     if in_var not in sensorVars and in_var not in  ["off", "get"]: rr = ("Fail", str(in_var) + " is not a valid variable name.")
                     elif in_var not in ["off", "get"]:
