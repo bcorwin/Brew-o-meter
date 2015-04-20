@@ -1,8 +1,7 @@
 #Arguments:
-##minLog
 ##comPort (do not need testMode if this is declared)
 ##testMode (True/False)
-###Examples: python Server.py minLog=15 comPort=3, python Server.py testMode=True
+###Examples: python Server.py comPort=3, python Server.py testMode=True
 ###No spaces around the =
 
 #Keys: temp_beer, light_amb, temp_amb, key = "beer", instant_override (time stamp)
@@ -16,6 +15,7 @@ import csv
 import re
 import requests
 import sys
+import pickle
 try: from win32api import SetSystemTime
 except: print("win32api not availabe so time sync command cannot be used")
 from dateutil import tz
@@ -38,8 +38,8 @@ def chkArduino():
     forceLog = False
     collectionOn = True
     loggingOn = True
-    alert_var = None
-    alert_rng = [None, None]
+    alert_var = get_var("alert_var")
+    alert_rng = get_var("alert_rng")
 
     try: queuedLogsCnt = sum(1 for row in csv.reader(open("Logs\QUEUED LOGS.csv"))) - 1
     except:
@@ -123,19 +123,19 @@ def chkArduino():
                         in_var = input("Set alert var:")
                     if in_var not in sensorVars and in_var not in  ["off", "get"]: rr = ("Fail", str(in_var) + " is not a valid variable name.")
                     elif in_var not in ["off", "get"]:
-                        alert_var = in_var
+                        alert_var = set_var("alert_var", in_var)
                         if con == None and (in_max == "" or in_min == ""):
                             in_min = input("Set alert lower bound:")
                             in_max = input("Set alert upper bound:")
                         try:
                             in_min = int(in_min)
                             in_max = int(in_max)
-                            alert_rng = [min(in_min, in_max), max(in_min, in_max)]
+                            alert_rng = set_var("alert_rng", [min(in_min, in_max), max(in_min, in_max)])
                             rr = ("Success", "Alert for " + alert_var + " set to " + str(alert_rng))
                         except: rr = ("Fail", "Alert range not set for " + alert_var)
                     elif in_var == "off":
-                        alert_var = None
-                        alert_rng = [None, None]
+                        alert_var = set_var("alert_var", None)
+                        alert_rng = set_var("alert_rng", [None, None])
                         rr = ("Success", "Alerts turned off")
                     elif in_var == "get":
                         if alert_var != None: rr = ("Success", "Alert on for:" + alert_var + str(alert_rng))
@@ -149,7 +149,7 @@ def chkArduino():
                     else: newVal = freq
                     try:
                         if newVal != "":
-                            minLog = int(newVal)
+                            minLog = set_var("minLog", int(newVal))
                             rr = ("Success", "Changed now minLog=" + str(minLog))
                         else: rr = ("Success", "Not changed from minLog=" + str(minLog))
                     except ValueError: rr = ("Fail", "Please enter a number. minLog=" + str(minLog))
@@ -215,8 +215,10 @@ def readData(allSums, allCnts, ser, testMode, sensorVars, alert_var, alert_rng, 
         readVal = readJSON(var, ardVal)
         if readVal != None:
             if var == alert_var and (int(readVal) < alert_rng[0] or int(readVal) > alert_rng[1]):
-                #PlaySound("SystemHand", SND_ALIAS)
-                sendBeep(ser)
+                try: sendBeep(ser)
+                except: pass
+                try: PlaySound("SystemHand", SND_ALIAS)
+                except: pass
             tempVals[var] = readVal
     
     try:
@@ -326,6 +328,7 @@ def readJSON(var, str):
         out = None
     return(out)
 def readForm(var, str):
+    if str == None: return(None)
     pattern = var + "=([^&]*)(&|$)"
     f = re.search(pattern, str, re.IGNORECASE )
     if f:
@@ -388,8 +391,23 @@ def get_instant_override():
 def get_from_timestamp(timestamp):
     local = datetime.fromtimestamp(timestamp)
     return local.strftime('%Y-%m-%d %H:%M:%S')
+def set_var(varname, val):
+    try: old = pickle.load(open("localvars.p", "rb"))
+    except: old = {}
+    finally: old[varname] = val
+    try: pickle.dump(old, open("localvars.p", "wb"))
+    except: print(varname + " is not a local var")
+    return val
+def get_var(varname):
+    out = None
+    try:
+        local = pickle.load(open("localvars.p", "rb"))
+        if varname in local: out = local[varname]
+    except: out = None
+    return out
 def initialize():
-    minLog = 15 #Number of minutes between logs to Django (data under this is aggregated)
+    minLog = get_var("minLog")
+    if minLog == None: minLog = 15
     testMode = None
     comPort = None
     
@@ -398,7 +416,6 @@ def initialize():
         for a in sys.argv:
             arg = a.split("=")
             if len(arg) > 1:
-                if(arg[0].upper() == "MINLOG"): minLog = int(arg[1])
                 if(arg[0].upper() == "COMPORT"): comPort = int(arg[1])
                 if(arg[0].upper() == "TESTMODE"): testMode = arg[1].upper()
     
