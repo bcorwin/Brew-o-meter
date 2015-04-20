@@ -203,7 +203,8 @@ def readData(allSums, allCnts, ser, testMode, sensorVars, alert_var, alert_rng, 
         readVal = readJSON(var, ardVal)
         if readVal != None:
             if var == alert_var and (int(readVal) < alert_rng[0] or int(readVal) > alert_rng[1]):
-                PlaySound("SystemHand", SND_ALIAS)
+                #PlaySound("SystemHand", SND_ALIAS)
+                sendBeep(ser)
             tempVals[var] = readVal
     
     try:
@@ -289,6 +290,10 @@ def postQueued(file, sensorVars, testMode):
             logEvent("Failed Queued Upload:" + response[1] + ":" + str(data["instant_override"]))
         else: logEvent("Successful Queued Push:" + str(data["instant_override"]))
     return(0)
+def sendBeep(ser):
+    ser.flushInput()
+    ser.write(b'B')
+    ser.flushInput()
 def readArduino(ser):
     ser.flushInput()
     ser.write(b'R')
