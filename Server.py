@@ -16,6 +16,7 @@ import csv
 import re
 import requests
 import sys
+from win32api import SetSystemTime
 from dateutil import tz
 from winsound import PlaySound, SND_ALIAS
 
@@ -55,6 +56,7 @@ def chkArduino():
         
         evnt,val,con = evntListener(testMode)
         rr = None
+        if evnt == None and con != None: rr = ("Fail", "Code not given")
         if evnt == "R":
             var = readForm("var", val)
             if var == None: rr = ("Success", "Current values:" + str(data))
@@ -93,6 +95,15 @@ def chkArduino():
                 forceLog = True
                 rr = ("Success", "Forcing log...")
             else: rr = ("Fail", "Must be on to force log.")
+        elif evnt == "S":
+            if con == None: rr = ("Fail", "This command cannot be done locally")
+            else:
+                unixtime = readForm("time", val)
+                try:
+                    res = setTime(unixtime)
+                    if res == 1: rr = ("Success", "Time set to " + datetime.fromtimestamp(unixtime).strftime("%Y-%m-%d %H:%M:%S"))
+                    else:  rr = ("Fail", "Time not set")
+                except: rr = ("Fail", "Unknown error, time not set")
         elif evnt == "A":
             in_var = ""
             in_min = ""
@@ -243,7 +254,8 @@ def evntListener(testMode):
         r, val, con = socketListener(1, testMode)
         if r == "Success":
             logEvent("Remote request:" + str(val))
-            code = readForm("code", val).upper()
+            code = readForm("code", val)
+            if code != None: code = code.upper()
             return(code,val, con)
         else: return((None, None, None))
 def socketListener(timeout, testMode):
@@ -290,6 +302,12 @@ def postQueued(file, sensorVars, testMode):
             logEvent("Failed Queued Upload:" + response[1] + ":" + str(data["instant_override"]))
         else: logEvent("Successful Queued Push:" + str(data["instant_override"]))
     return(0)
+def setTime(unixtime):
+    #unixtime = datetime.utcnow().timestamp()
+    newtime = datetime.utcfromtimestamp(unixtime)
+    dow = newtime.isocalendar()[2]
+    newtime = newtime.timetuple()
+    return SetSystemTime( *(newtime[:2] + (dow,) + newtime[2:7]))
 def sendBeep(ser):
     ser.flushInput()
     ser.write(b'B')
@@ -308,11 +326,12 @@ def readJSON(var, str):
     return(out)
 def readForm(var, str):
     pattern = var + "=([^&]*)(&|$)"
-    try:
-        out = re.search(pattern, str, re.IGNORECASE ).group(1)
+    f = re.search(pattern, str, re.IGNORECASE )
+    if f:
+        out = f.group(1)
         try: out = float(out)
         except: out = out.lower()
-    except: out = None
+    else: out = None
     return(out)
 def logValues2django(data):    
     try:
