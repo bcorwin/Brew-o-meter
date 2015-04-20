@@ -15,8 +15,7 @@ void loop() {
   int req = Serial.read();
   if(req == 66) {
     tone(buzzer, 2048, 100);
-  };
-  if(req == 82) {    
+  } else if(req == 82) {    
     float light_val = analogRead(light);
     float temp_amb_val = 1.8*(analogRead(temp_amb)*5000.0/1024.0 - 500.0)/10.0 + 32.0;
     float pres_beer_val = analogRead(pres_beer);
