@@ -132,7 +132,10 @@ def chkArduino():
                             in_max = int(in_max)
                             alert_rng = set_var("alert_rng", [min(in_min, in_max), max(in_min, in_max)])
                             rr = ("Success", "Alert for " + alert_var + " set to " + str(alert_rng))
-                        except: rr = ("Fail", "Alert range not set for " + alert_var)
+                        except:
+                            rr = ("Fail", "Alert range not set for " + alert_var)
+                            alert_var = set_var("alert_var", None)
+                            alert_rng = set_var("alert_rng", [None, None])
                     elif in_var == "off":
                         alert_var = set_var("alert_var", None)
                         alert_rng = set_var("alert_rng", [None, None])
