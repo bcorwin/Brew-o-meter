@@ -313,7 +313,7 @@ def setTime(unixtime):
     newtime = datetime.fromtimestamp(unixtime).replace(tzinfo=tz.tzutc()).astimezone(tz.gettz('America/Chicago'))
     dow = newtime.isocalendar()[2]
     newtime = newtime.timetuple()
-    return SetSystemTime( *(newtime[:2] + (dow,) + newtime[2:7]))
+    return SetLocalTime( *(newtime[:2] + (dow,) + newtime[2:7]))
 def sendBeep(ser):
     ser.flushInput()
     ser.write(b'B')
