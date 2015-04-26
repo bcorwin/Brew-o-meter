@@ -102,7 +102,7 @@ def chkArduino():
                 unixtime = readForm("time", val)
                 try:
                     res = setTime(unixtime)
-                    if res == 1: rr = ("Success", "Time set to " + datetime.fromtimestamp(unixtime).strftime("%Y-%m-%d %H:%M:%S"))
+                    if res == 1: rr = ("Success", "Time set to " + datetime.fromtimestamp(unixtime).strftime("%Y-%m-%d %H:%M:%S") + " UTC")
                     else:  rr = ("Fail", "Time not set")
                 except: rr = ("Fail", "Unknown error, time not set")
         elif evnt == "A":
@@ -313,8 +313,7 @@ def setTime(unixtime):
     newtime = datetime.fromtimestamp(unixtime).replace(tzinfo=tz.tzutc())
     dow = newtime.isocalendar()[2]
     newtime = newtime.timetuple()
-    out = SetSystemTime( *(newtime[:2] + (dow,) + newtime[2:7]))
-    return(str(out) + " UTC")
+    return SetSystemTime( *(newtime[:2] + (dow,) + newtime[2:7]))
 def sendBeep(ser):
     ser.flushInput()
     ser.write(b'B')
