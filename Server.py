@@ -310,10 +310,10 @@ def postQueued(file, sensorVars, testMode):
     return(0)
 def setTime(unixtime):
     #unixtime = datetime.utcnow().timestamp()
-    newtime = datetime.fromtimestamp(unixtime).replace(tzinfo=tz.tzutc()).astimezone(tz.gettz('America/Chicago'))
+    newtime = datetime.fromtimestamp(unixtime).replace(tzinfo=tz.tzutc())
     dow = newtime.isocalendar()[2]
     newtime = newtime.timetuple()
-    return SetLocalTime( *(newtime[:2] + (dow,) + newtime[2:7]))
+    return SetSystemTime( *(newtime[:2] + (dow,) + newtime[2:7]))
 def sendBeep(ser):
     ser.flushInput()
     ser.write(b'B')
