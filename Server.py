@@ -28,7 +28,7 @@ def chkArduino():
     sensorVars.sort()
     fileName = genCompLog("Logs\SENSOR LOG " + str(datetime.now().strftime("%Y%m%d_%H%M")) + ".csv", sensorVars)
     #Initialize vars
-    lastLogAttempt = time.time()-60*minLog - 1
+    lastLogAttempt = time.time()
     allSums = vars2pass(True, testMode)
     allCnts = vars2pass(True, testMode)
     data = vars2pass(False, testMode)
