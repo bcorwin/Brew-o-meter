@@ -310,7 +310,7 @@ def postQueued(file, sensorVars, testMode):
     return(0)
 def setTime(unixtime):
     #unixtime = datetime.utcnow().timestamp()
-    newtime = datetime.utcfromtimestamp(unixtime)
+    newtime = datetime.fromtimestamp(unixtime).replace(tzinfo=tz.tzutc()).astimezone(tz.gettz('America/Chicago'))
     dow = newtime.isocalendar()[2]
     newtime = newtime.timetuple()
     return SetSystemTime( *(newtime[:2] + (dow,) + newtime[2:7]))
