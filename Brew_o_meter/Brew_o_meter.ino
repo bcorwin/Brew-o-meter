@@ -6,14 +6,17 @@ int pres_beer = A3;
 int buzzer = 8;
 
 void setup() {
-    digitalWrite(temp_beer, LOW);
+    //digitalWrite(temp_beer, LOW);
     pinMode(temp_beer, INPUT);
+    pinMode(temp_amb, INPUT);
     pinMode(buzzer, OUTPUT);
     Serial.begin(9600);
 }
 
 void loop() {
   int req = Serial.read();
+  //delay(500);
+  //req = 82;
   if(req == 66) {
     tone(buzzer, 2048, 100);
   } else if(req == 82) {    
