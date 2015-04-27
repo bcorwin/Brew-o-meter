@@ -1,7 +1,8 @@
 int light = A1;
 int temp_amb = A0;
+int temp_beer = A2;
 int pres_beer = A3;
-int temp_beer = 10;
+//int temp_beer = 10;
 int buzzer = 8;
 
 void setup() {
@@ -18,8 +19,9 @@ void loop() {
   } else if(req == 82) {    
     float light_val = analogRead(light);
     float temp_amb_val = 1.8*(analogRead(temp_amb)*5000.0/1024.0 - 500.0)/10.0 + 32.0;
+    float temp_beer_val = 1.8*(analogRead(temp_beer)*5000.0/1024.0 - 500.0)/10.0 + 32.0;
     float pres_beer_val = analogRead(pres_beer);
-    float temp_beer_val = 1.8*tempC(temp_beer) + 32.0;
+    //float temp_beer_val = 1.8*tempC(temp_beer) + 32.0;
     
     float chk_sum = light_val + temp_amb_val + temp_beer_val + pres_beer_val;
     
